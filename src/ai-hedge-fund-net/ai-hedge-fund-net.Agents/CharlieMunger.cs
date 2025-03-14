@@ -5,6 +5,8 @@ namespace ai_hedge_fund_net.Agents
 {
     public class CharlieMunger : ITradingAgent
     {
+        public string Name => nameof(CharlieMunger);
+
         public IDictionary<string, IEnumerable<string>> AnalyzeEarningsStability(IEnumerable<FinancialMetrics> financialMetricsItems, IEnumerable<FinancialLineItem> financialLineItems)
         {
             throw new NotImplementedException();

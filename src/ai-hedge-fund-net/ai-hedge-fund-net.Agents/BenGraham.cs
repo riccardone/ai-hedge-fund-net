@@ -5,6 +5,8 @@ namespace ai_hedge_fund_net.Agents
 {
     public class BenGraham : ITradingAgent
     {
+        public string Name => nameof(BenGraham);
+
         public IDictionary<string, IEnumerable<string>> AnalyzeEarningsStability(IEnumerable<FinancialMetrics> financialMetricsItems, IEnumerable<FinancialLineItem> financialLineItems)
         {
             //Graham wants at least several years of consistently positive earnings(ideally 5 +).
