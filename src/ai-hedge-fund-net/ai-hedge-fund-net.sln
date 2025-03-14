@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.12.35728.132 d17.12
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ai-hedge-fund-net.Agents", "ai-hedge-fund-net.Agents\ai-hedge-fund-net.Agents.csproj", "{08D118A4-CEEA-4F64-BD75-202319FB2582}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ai-hedge-fund-net.Contracts", "ai-hedge-fund-net.Contracts\ai-hedge-fund-net.Contracts.csproj", "{95E4B515-A27D-449B-8100-5372EE9A0689}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{08D118A4-CEEA-4F64-BD75-202319FB2582}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{08D118A4-CEEA-4F64-BD75-202319FB2582}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{08D118A4-CEEA-4F64-BD75-202319FB2582}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{08D118A4-CEEA-4F64-BD75-202319FB2582}.Release|Any CPU.Build.0 = Release|Any CPU
+		{95E4B515-A27D-449B-8100-5372EE9A0689}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{95E4B515-A27D-449B-8100-5372EE9A0689}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{95E4B515-A27D-449B-8100-5372EE9A0689}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{95E4B515-A27D-449B-8100-5372EE9A0689}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
