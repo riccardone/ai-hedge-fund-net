@@ -2,7 +2,7 @@
 using WorkflowCore.Interface;
 using WorkflowCore.Models;
 
-namespace ai_hedge_fund_net.ConsoleApp;
+namespace ai_hedge_fund_net.ConsoleApp.WorkflowSteps;
 
 public class RiskManagementStep : StepBody
 {
