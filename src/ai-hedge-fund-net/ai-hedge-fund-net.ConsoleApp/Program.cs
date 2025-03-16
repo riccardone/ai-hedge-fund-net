@@ -15,6 +15,15 @@ public class Program
 
     static async Task Main(string[] args)
     {
+        // Parse command-line arguments
+        var selectedAgent = ParseArgument(args, "--agent") ?? "BenGraham"; // Default to BenGraham
+        var selectedTickers = ParseArgument(args, "--tickers")?.Split(',') ?? new string[] { };
+        var selectedLLM = ParseArgument(args, "--llm") ?? "openai"; // Default to OpenAI
+
+        Logger.Info($"Selected Agent: {selectedAgent}");
+        Logger.Info($"Selected Tickers: {string.Join(", ", selectedTickers)}");
+        Logger.Info($"Selected LLM: {selectedLLM}");
+
         var services = new ServiceCollection()
             .AddLogging(loggingBuilder =>
             {
@@ -32,16 +41,15 @@ public class Program
                     .LoadConfigurationFromFile(configPath, optional: true);
             })
             .AddWorkflow()
-            .AddSingleton<ITradingAgent, BenGraham>() // Register BenGraham in DI
+            .AddSingleton<ITradingAgent>(sp => CreateTradingAgent(selectedAgent))
             .BuildServiceProvider();
 
         var host = services.GetRequiredService<IWorkflowHost>();
         host.RegisterWorkflow<TradingWorkflow, TradingWorkflowState>();
-        
-        // Inject dependencies into workflow state
+
         var workflowData = new TradingWorkflowState
         {
-            TradingAgent = services.GetRequiredService<ITradingAgent>() // Assign TradingAgent
+            TradingAgent = services.GetRequiredService<ITradingAgent>()
         };
 
         host.Start();
@@ -52,5 +60,24 @@ public class Program
 
         host.Stop();
         Logger.Info("Workflow Stopped.");
+    }
+
+    private static string? ParseArgument(string[] args, string key)
+    {
+        var index = Array.FindIndex(args, a => a.Equals(key, StringComparison.OrdinalIgnoreCase));
+        return (index >= 0 && index + 1 < args.Length) ? args[index + 1] : null;
+    }
+
+    private static ITradingAgent CreateTradingAgent(string agentName)
+    {
+        return agentName.ToLower() switch
+        {
+            "bengraham" => new BenGraham(),
+            "warrenbuffett" => new WarrenBuffett(),
+            "billackman" => new BillAckman(),
+            "cathiewood" => new CathieWood(),
+            "charliemunger" => new CharlieMunger(),
+            _ => throw new ArgumentException($"Unknown trading agent: {agentName}")
+        };
     }
 }

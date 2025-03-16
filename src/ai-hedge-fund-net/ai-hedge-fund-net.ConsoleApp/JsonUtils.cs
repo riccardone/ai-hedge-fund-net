@@ -1,9 +1,12 @@
-﻿using System.Text.Json;
+﻿using NLog;
+using System.Text.Json;
 
 namespace ai_hedge_fund_net.ConsoleApp;
 
 public static class JsonUtils
 {
+    private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+
     public static Dictionary<string, object>? ParseJson(string jsonResponse)
     {
         try
@@ -12,7 +15,7 @@ public static class JsonUtils
         }
         catch (JsonException ex)
         {
-            Console.WriteLine($"JSON Parsing Error: {ex.Message}");
+            Logger.Error($"JSON Parsing Error: {ex.Message}");
             return null;
         }
     }
