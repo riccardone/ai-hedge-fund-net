@@ -1,11 +1,12 @@
-﻿using ai_hedge_fund_net.Contracts.Model;
+﻿using ai_hedge_fund_net.Agents;
+using ai_hedge_fund_net.Contracts.Model;
 using NLog;
 using WorkflowCore.Interface;
 using WorkflowCore.Models;
 
-namespace ai_hedge_fund_net.ConsoleApp
+namespace ai_hedge_fund_net.ConsoleApp.WorkflowSteps
 {
-    public class BenGrahamAnalysis : StepBody
+    public class CharlieMungerStep : StepBody
     {
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
@@ -19,7 +20,7 @@ namespace ai_hedge_fund_net.ConsoleApp
                 return ExecutionResult.Next();
             }
 
-            var tradingAgent = workflowState.TradingAgent;
+            var tradingAgent = new CharlieMunger();
 
             Logger.Info($"[{tradingAgent.Name}] Analyzing fundamental investment signals...");
 
@@ -36,6 +37,8 @@ namespace ai_hedge_fund_net.ConsoleApp
             Logger.Info($"Earnings Stability: {string.Join(", ", earningsStability["Details"])}");
             Logger.Info($"Financial Strength: {string.Join(", ", financialStrength["Details"])}");
             Logger.Info($"Valuation: {string.Join(", ", valuation["Details"])}");
+
+            ExecutionResult.Outcome(tradingAgent.GenerateOutput());
 
             return ExecutionResult.Next();
         }
