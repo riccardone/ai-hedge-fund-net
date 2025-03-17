@@ -14,11 +14,6 @@ namespace ai_hedge_fund_net.ConsoleApp.WorkflowSteps
         {
             // Get TradingAgent from Workflow State
             var workflowState = context.Workflow.Data as TradingWorkflowState;
-            if (workflowState == null || workflowState.TradingAgent == null)
-            {
-                Logger.Error("ERROR: Missing TradingAgent in Workflow State.");
-                return ExecutionResult.Next();
-            }
 
             var tradingAgent = new WarrenBuffett();
 
@@ -38,7 +33,7 @@ namespace ai_hedge_fund_net.ConsoleApp.WorkflowSteps
             Logger.Info($"Financial Strength: {string.Join(", ", financialStrength["Details"])}");
             Logger.Info($"Valuation: {string.Join(", ", valuation["Details"])}");
 
-            ExecutionResult.Outcome(tradingAgent.GenerateOutput());
+            ExecutionResult.Outcome(tradingAgent.GenerateOutputAsync().Result);
 
             return ExecutionResult.Next();
         }

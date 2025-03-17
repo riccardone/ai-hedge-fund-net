@@ -38,7 +38,7 @@ public class AnalyzeFinancialMetricsStep : StepBody
 
             if (analysisResult.OutcomeValue is TradeSignal tradeSignal)
             {
-                Logger.Info($"{analyst} analysis completed with signal: {tradeSignal.Signal}");
+                Logger.Info($"{analyst} analysis completed with signal: {tradeSignal.Signal} {tradeSignal.Reasoning}");
                 state.FinancialMetrics.Add(new FinancialMetrics { Analysis = tradeSignal });
             }
             else

@@ -8,19 +8,24 @@ namespace ai_hedge_fund_net.ConsoleApp.WorkflowSteps
 {
     public class BenGrahamStep : StepBody
     {
+        private readonly IHttpClientFactory _httpClientFactory;
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+
+        public BenGrahamStep(IHttpClientFactory httpClientFactory)
+        {
+            _httpClientFactory = httpClientFactory;
+        }
 
         public override ExecutionResult Run(IStepExecutionContext context)
         {
             // Get TradingAgent from Workflow State
             var workflowState = context.Workflow.Data as TradingWorkflowState;
-            if (workflowState == null || workflowState.TradingAgent == null)
-            {
-                Logger.Error("ERROR: Missing TradingAgent in Workflow State.");
-                return ExecutionResult.Next();
-            }
 
-            var tradingAgent = new BenGraham();
+            string modelProvider = workflowState.ModelProvider;
+            var httpClient = _httpClientFactory.CreateClient(modelProvider); // Dynamic provider selection
+            var httpService = new HttpService(httpClient);
+
+            var tradingAgent = new BenGraham(workflowState, httpService);
 
             Logger.Info($"[{tradingAgent.Name}] Analyzing fundamental investment signals...");
 
@@ -38,7 +43,7 @@ namespace ai_hedge_fund_net.ConsoleApp.WorkflowSteps
             Logger.Info($"Financial Strength: {string.Join(", ", financialStrength["Details"])}");
             Logger.Info($"Valuation: {string.Join(", ", valuation["Details"])}");
 
-            return ExecutionResult.Outcome(tradingAgent.GenerateOutput());
+            return ExecutionResult.Outcome(tradingAgent.GenerateOutputAsync().Result);
         }
 
         private void LoadFinancials(TradingWorkflowState tradingWorkflowState)
