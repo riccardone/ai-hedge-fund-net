@@ -21,7 +21,7 @@ public class PortfolioManagementAgent : ITradingAgent
         throw new NotImplementedException();
     }
 
-    public TradeSignal GenerateOutput()
+    public Task<TradeSignal> GenerateOutputAsync()
     {
         throw new NotImplementedException();
     }

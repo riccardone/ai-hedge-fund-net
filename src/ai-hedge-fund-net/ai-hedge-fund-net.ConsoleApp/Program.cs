@@ -1,11 +1,11 @@
-﻿using ai_hedge_fund_net.Agents;
-using ai_hedge_fund_net.ConsoleApp.WorkflowSteps;
-using ai_hedge_fund_net.Contracts;
+﻿using ai_hedge_fund_net.ConsoleApp.WorkflowSteps;
 using ai_hedge_fund_net.Contracts.Model;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NLog;
 using NLog.Extensions.Logging;
+using System.Net.Http.Headers;
 using WorkflowCore.Interface;
 
 namespace ai_hedge_fund_net.ConsoleApp;
@@ -47,11 +47,6 @@ public class Program
                 loggingBuilder.AddFilter("System.Net.Http.*", Microsoft.Extensions.Logging.LogLevel.Error);
             })
             .AddWorkflow()
-            .AddSingleton<ITradingAgent>(sp => CreateTradingAgent("BenGraham")) 
-            .AddSingleton<ITradingAgent>(sp => CreateTradingAgent("BillAckman"))
-            .AddSingleton<ITradingAgent>(sp => CreateTradingAgent("CathieWood")) 
-            .AddSingleton<ITradingAgent>(sp => CreateTradingAgent("CharlieMunger")) 
-            .AddSingleton<ITradingAgent>(sp => CreateTradingAgent("WarrenBuffett")) 
             .AddSingleton<TradingWorkflow>()
             .AddSingleton<BenGrahamStep>()
             .AddSingleton<BillAckmanStep>()
@@ -61,15 +56,42 @@ public class Program
             .AddSingleton<InitializeTradingStateStep>()
             .AddSingleton<AnalyzeFinancialMetricsStep>()
             .AddSingleton<RiskManagementStep>()
-            .AddSingleton<PortfolioManagementStep>()
-            .BuildServiceProvider();
+            .AddSingleton<PortfolioManagementStep>();
 
-        var host = services.GetRequiredService<IWorkflowHost>();
+        var configBuilder = new ConfigurationBuilder()
+            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+            .AddEnvironmentVariables();
+        var configuration = configBuilder.Build();
+        services.AddSingleton<IConfiguration>(configuration);
+
+        services.AddHttpClient();
+        services.AddHttpClient("OpenAI", client =>
+        {
+            var apiKey = configuration["OpenAI:ApiKey"];
+            if (string.IsNullOrEmpty(apiKey))
+            {
+                throw new InvalidOperationException("OpenAI API key is missing in configuration.");
+            }
+            client.BaseAddress = new Uri("https://api.openai.com/v1/");
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        });
+        services.AddHttpClient("DeepSeek", client =>
+        {
+            var apiKey = configuration["DeepSeek:ApiKey"];
+            if (string.IsNullOrEmpty(apiKey))
+            {
+                throw new InvalidOperationException("DeepSeek API key is missing in configuration.");
+            }
+            client.BaseAddress = new Uri("https://api.deepseek.com/v1/");
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        });
+
+        var serviceProvider = services.BuildServiceProvider();
+        var host = serviceProvider.GetRequiredService<IWorkflowHost>();
         host.RegisterWorkflow<TradingWorkflow, TradingWorkflowState>();
 
         var workflowData = new TradingWorkflowState
         {
-            TradingAgent = services.GetRequiredService<ITradingAgent>(),
             InitialCash = initialCash,
             MarginRequirement = marginRequirement,
             Tickers = tickers.ToList(),
@@ -114,18 +136,5 @@ public class Program
     {
         var argValue = ParseArgument(args, key);
         return double.TryParse(argValue, out double result) ? result : defaultValue;
-    }
-
-    private static ITradingAgent CreateTradingAgent(string agentName)
-    {
-        return agentName.ToLower() switch
-        {
-            "bengraham" => new BenGraham(),
-            "warrenbuffett" => new WarrenBuffett(),
-            "billackman" => new BillAckman(),
-            "cathiewood" => new CathieWood(),
-            "charliemunger" => new CharlieMunger(),
-            _ => throw new ArgumentException($"Unknown trading agent: {agentName}")
-        };
     }
 }
