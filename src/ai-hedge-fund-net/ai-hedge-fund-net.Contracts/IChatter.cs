@@ -1,6 +1,6 @@
-﻿namespace ai_hedge_fund_net.Agents;
+﻿namespace ai_hedge_fund_net.Contracts;
 
-public interface IHttpService
+public interface IChatter
 {
     bool TryPost(string path, string payload, out string response);
 }

@@ -1,12 +1,13 @@
 ﻿using System.Text;
+using ai_hedge_fund_net.Contracts;
 
-namespace ai_hedge_fund_net.Agents;
+namespace ai_hedge_fund_net.Data;
 
-public class HttpService : IHttpService
+public class HttpAiChatter : IChatter
 {
     private readonly HttpClient _client;
 
-    public HttpService(HttpClient client)
+    public HttpAiChatter(HttpClient client)
     {
         _client = client;
     }

@@ -2,7 +2,7 @@
 
 public class TradingWorkflowState
 {
-    public List<FinancialMetrics> FinancialMetrics { get; set; } = new();
+    public IDictionary<string, FinancialMetrics> FinancialMetrics { get; set; } = new Dictionary<string, FinancialMetrics>();
     public List<FinancialLineItem> FinancialLineItems { get; set; } = new();
 
     public List<string> Tickers { get; set; } = new();

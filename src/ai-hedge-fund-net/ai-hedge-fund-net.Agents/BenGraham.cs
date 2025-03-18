@@ -1,7 +1,6 @@
 ﻿using ai_hedge_fund_net.Contracts;
 using ai_hedge_fund_net.Contracts.Model;
 using System.Text.Json;
-using System.Text;
 
 namespace ai_hedge_fund_net.Agents;
 
@@ -9,65 +8,79 @@ public class BenGraham : ITradingAgent
 {
     public string Name => nameof(BenGraham);
     private readonly TradingWorkflowState _tradingWorkflowState;
-    private readonly IHttpService _httpService;
+    private readonly IChatter _chatter;
+    private readonly IDictionary<string, FinancialMetrics> _financialMetrics;
+    private readonly IDictionary<string, IEnumerable<FinancialLineItem>> _financialLineItems;
+    private readonly decimal _marketCap;
 
-    public BenGraham(TradingWorkflowState tradingWorkflowState, IHttpService httpService)
+    public BenGraham(TradingWorkflowState tradingWorkflowState, IChatter chatter,
+        IDictionary<string, FinancialMetrics> financialMetrics,
+        IDictionary<string, IEnumerable<FinancialLineItem>> financialLineItems, decimal marketCap)
     {
         _tradingWorkflowState = tradingWorkflowState;
-        _httpService = httpService;
+        _chatter = chatter;
+        _financialMetrics = financialMetrics;
+        _financialLineItems = financialLineItems;
+        _marketCap = marketCap;
     }
 
-    public IDictionary<string, IEnumerable<string>> AnalyzeEarningsStability(IEnumerable<FinancialMetrics> financialMetricsItems, IEnumerable<FinancialLineItem> financialLineItems)
+    public IDictionary<string, IDictionary<string, IEnumerable<string>>> AnalyzeEarningsStability()
     {
         // Graham wants at least several years of consistently positive earnings(ideally 5 +).
         // We'll check:
         // 1.Number of years with positive EPS.
         // 2.Growth in EPS from first to last period.
 
-        var details = new List<string>();
-        int score = 0;
+        var results = new Dictionary<string, IDictionary<string, IEnumerable<string>>>();
+        foreach (var ticker in _tradingWorkflowState.Tickers)
+        {
+            var details = new List<string>();
+            int score = 0;
 
-        var epsValues = financialLineItems
-            .Where(item => item.Extras.ContainsKey("EarningsPerShare"))
-            .Select(item => item.Extras["EarningsPerShare"])
-            .ToList();
+            var epsValues = _financialLineItems[ticker]
+                .Where(item => item.Extras.ContainsKey("EarningsPerShare"))
+                .Select(item => item.Extras["EarningsPerShare"])
+                .ToList();
 
-        if (epsValues.Count < 2)
-        {
-            details.Add("Not enough multi-year EPS data.");
-            return new Dictionary<string, IEnumerable<string>> { { "Score", new[] { score.ToString() } }, { "Details", details } };
+            if (epsValues.Count < 2)
+            {
+                details.Add("Not enough multi-year EPS data.");
+                results.Add(ticker, new Dictionary<string, IEnumerable<string>> { { "Score", new[] { score.ToString() } }, { "Details", details } });
+                continue;
+            }
+
+            int positiveEpsYears = epsValues.Count(eps => eps > 0);
+            if (positiveEpsYears == epsValues.Count)
+            {
+                score += 3;
+                details.Add("EPS was positive in all available periods.");
+            }
+            else if (positiveEpsYears >= epsValues.Count * 0.8)
+            {
+                score += 2;
+                details.Add("EPS was positive in most periods.");
+            }
+            else
+            {
+                details.Add("EPS was negative in multiple periods.");
+            }
+
+            if (epsValues.Last() > epsValues.First())
+            {
+                score += 1;
+                details.Add("EPS grew from earliest to latest period.");
+            }
+            else
+            {
+                details.Add("EPS did not grow from earliest to latest period.");
+            }
+            results.Add(ticker, new Dictionary<string, IEnumerable<string>> { { "Score", new[] { score.ToString() } }, { "Details", details } });
         }
 
-        int positiveEpsYears = epsValues.Count(eps => eps > 0);
-        if (positiveEpsYears == epsValues.Count)
-        {
-            score += 3;
-            details.Add("EPS was positive in all available periods.");
-        }
-        else if (positiveEpsYears >= epsValues.Count * 0.8)
-        {
-            score += 2;
-            details.Add("EPS was positive in most periods.");
-        }
-        else
-        {
-            details.Add("EPS was negative in multiple periods.");
-        }
-
-        if (epsValues.Last() > epsValues.First())
-        {
-            score += 1;
-            details.Add("EPS grew from earliest to latest period.");
-        }
-        else
-        {
-            details.Add("EPS did not grow from earliest to latest period.");
-        }
-
-        return new Dictionary<string, IEnumerable<string>> { { "Score", new[] { score.ToString() } }, { "Details", details } };
+        return results;
     }
 
-    public IDictionary<string, IEnumerable<string>> AnalyzeFinancialStrength(FinancialMetrics financialMetrics, IEnumerable<FinancialLineItem> financialLineItems)
+    public IDictionary<string, IEnumerable<string>> AnalyzeFinancialStrength()
     {
         // Graham checks liquidity(current ratio >= 2), manageable debt,
         // and dividend record(preferably some history of dividends).
@@ -136,7 +149,7 @@ public class BenGraham : ITradingAgent
         return new Dictionary<string, IEnumerable<string>> { { "Score", new[] { score.ToString() } }, { "Details", details } };
     }
 
-    public IDictionary<string, IEnumerable<string>> AnalyzeValuation(FinancialMetrics financialMetrics, IEnumerable<FinancialLineItem> financialLineItems, decimal marketCap)
+    public IDictionary<string, IEnumerable<string>> AnalyzeValuation()
     {
         // Core Graham approach to valuation:
         // 1.Net - Net Check: (Current Assets - Total Liabilities) vs.Market Cap
@@ -246,7 +259,7 @@ public class BenGraham : ITradingAgent
 
         var requestContent = JsonSerializer.Serialize(payload);
 
-        if(!_httpService.TryPost("chat/completions", requestContent, out string response))
+        if(!_chatter.TryPost("chat/completions", requestContent, out string response))
         {
             return new TradeSignal
             {
