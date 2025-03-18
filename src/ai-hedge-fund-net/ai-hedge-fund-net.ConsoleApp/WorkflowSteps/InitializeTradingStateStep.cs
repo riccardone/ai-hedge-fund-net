@@ -1,4 +1,5 @@
-﻿using ai_hedge_fund_net.Contracts.Model;
+﻿using ai_hedge_fund_net.Agents;
+using ai_hedge_fund_net.Contracts.Model;
 using NLog;
 using WorkflowCore.Interface;
 using WorkflowCore.Models;
@@ -7,7 +8,13 @@ namespace ai_hedge_fund_net.ConsoleApp.WorkflowSteps;
 
 public class InitializeTradingStateStep : StepBody
 {
+    private readonly AlphaVantageService _alphaVantageService;
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+
+    public InitializeTradingStateStep(AlphaVantageService alphaVantageService)
+    {
+        _alphaVantageService = alphaVantageService;
+    }
 
     public override ExecutionResult Run(IStepExecutionContext context)
     {
@@ -53,6 +60,11 @@ public class InitializeTradingStateStep : StepBody
 
         // Initialize empty trade decisions
         state.TradeDecisions = new Dictionary<string, TradeDecision>();
+
+        foreach (var ticker in state.Tickers)
+        {
+            state.FinancialMetrics.Add(ticker, _alphaVantageService.GetFinancialMetricsAsync(state.Tickers.First()).Result);
+        }
 
         Logger.Info("Trading workflow state initialized:");
         Logger.Info($"Start Date: {state.StartDate}, End Date: {state.EndDate}");

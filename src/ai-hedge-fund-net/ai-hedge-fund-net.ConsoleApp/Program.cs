@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using NLog;
 using NLog.Extensions.Logging;
 using System.Net.Http.Headers;
+using ai_hedge_fund_net.Agents;
 using WorkflowCore.Interface;
 
 namespace ai_hedge_fund_net.ConsoleApp;
@@ -84,6 +85,16 @@ public class Program
             }
             client.BaseAddress = new Uri("https://api.deepseek.com/v1/");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        });
+        services.AddHttpClient<AlphaVantageService>(client =>
+        {
+            client.BaseAddress = new Uri("https://www.alphavantage.co/");
+        });
+        services.AddSingleton(provider =>
+        {
+            var config = provider.GetRequiredService<IConfiguration>();
+            var apiKey = config["AlphaVantage:ApiKey"];
+            return new AlphaVantageService(provider.GetRequiredService<HttpClient>(), apiKey);
         });
 
         var serviceProvider = services.BuildServiceProvider();

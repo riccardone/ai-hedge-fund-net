@@ -1,4 +1,5 @@
 ﻿using ai_hedge_fund_net.Agents;
+using ai_hedge_fund_net.Contracts;
 using ai_hedge_fund_net.Contracts.Model;
 using NLog;
 using WorkflowCore.Interface;
@@ -9,11 +10,13 @@ namespace ai_hedge_fund_net.ConsoleApp.WorkflowSteps
     public class BenGrahamStep : StepBody
     {
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IChatter _chatter;
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
-        public BenGrahamStep(IHttpClientFactory httpClientFactory)
+        public BenGrahamStep(IHttpClientFactory httpClientFactory, IChatter chatter)
         {
             _httpClientFactory = httpClientFactory;
+            _chatter = chatter;
         }
 
         public override ExecutionResult Run(IStepExecutionContext context)
@@ -22,10 +25,10 @@ namespace ai_hedge_fund_net.ConsoleApp.WorkflowSteps
             var workflowState = context.Workflow.Data as TradingWorkflowState;
 
             string modelProvider = workflowState.ModelProvider;
-            var httpClient = _httpClientFactory.CreateClient(modelProvider); // Dynamic provider selection
-            var httpService = new HttpService(httpClient);
+            //var httpClient = _httpClientFactory.CreateClient(modelProvider); // Dynamic provider selection
+            //var httpService = new HttpService(httpClient);
 
-            var tradingAgent = new BenGraham(workflowState, httpService);
+            var tradingAgent = new BenGraham(workflowState, _chatter);
 
             Logger.Info($"[{tradingAgent.Name}] Analyzing fundamental investment signals...");
 
@@ -34,9 +37,9 @@ namespace ai_hedge_fund_net.ConsoleApp.WorkflowSteps
             var financialLineItems = workflowState.FinancialLineItems;
 
             // Call Ben Graham's analysis methods
-            var earningsStability = tradingAgent.AnalyzeEarningsStability(financialMetrics, financialLineItems);
-            var financialStrength = tradingAgent.AnalyzeFinancialStrength(financialMetrics.FirstOrDefault(), financialLineItems);
-            var valuation = tradingAgent.AnalyzeValuation(financialMetrics.FirstOrDefault(), financialLineItems, marketCap: 1000000m);
+            var earningsStability = tradingAgent.AnalyzeEarningsStability();
+            var financialStrength = tradingAgent.AnalyzeFinancialStrength();
+            var valuation = tradingAgent.AnalyzeValuation();
 
             // Log analysis results
             Logger.Info($"Earnings Stability: {string.Join(", ", earningsStability["Details"])}");

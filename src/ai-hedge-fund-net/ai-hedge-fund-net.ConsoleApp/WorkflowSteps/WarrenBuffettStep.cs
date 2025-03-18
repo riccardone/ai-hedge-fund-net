@@ -15,7 +15,7 @@ namespace ai_hedge_fund_net.ConsoleApp.WorkflowSteps
             // Get TradingAgent from Workflow State
             var workflowState = context.Workflow.Data as TradingWorkflowState;
 
-            var tradingAgent = new WarrenBuffett();
+            var tradingAgent = new WarrenBuffett(); // TODO pass the financial data
 
             Logger.Info($"[{tradingAgent.Name}] Analyzing fundamental investment signals...");
 
@@ -24,9 +24,9 @@ namespace ai_hedge_fund_net.ConsoleApp.WorkflowSteps
             var financialLineItems = workflowState.FinancialLineItems;
 
             // Call Ben Graham's analysis methods
-            var earningsStability = tradingAgent.AnalyzeEarningsStability(financialMetrics, financialLineItems);
-            var financialStrength = tradingAgent.AnalyzeFinancialStrength(financialMetrics.FirstOrDefault(), financialLineItems);
-            var valuation = tradingAgent.AnalyzeValuation(financialMetrics.FirstOrDefault(), financialLineItems, marketCap: 1000000m);
+            var earningsStability = tradingAgent.AnalyzeEarningsStability();
+            var financialStrength = tradingAgent.AnalyzeFinancialStrength();
+            var valuation = tradingAgent.AnalyzeValuation(); //marketCap: 1000000m);
 
             // Log analysis results
             Logger.Info($"Earnings Stability: {string.Join(", ", earningsStability["Details"])}");

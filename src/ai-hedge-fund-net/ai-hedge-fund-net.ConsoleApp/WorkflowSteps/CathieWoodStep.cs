@@ -24,9 +24,9 @@ namespace ai_hedge_fund_net.ConsoleApp.WorkflowSteps
             var financialLineItems = workflowState.FinancialLineItems;
 
             // Call Ben Graham's analysis methods
-            var earningsStability = tradingAgent.AnalyzeEarningsStability(financialMetrics, financialLineItems);
-            var financialStrength = tradingAgent.AnalyzeFinancialStrength(financialMetrics.FirstOrDefault(), financialLineItems);
-            var valuation = tradingAgent.AnalyzeValuation(financialMetrics.FirstOrDefault(), financialLineItems, marketCap: 1000000m);
+            var earningsStability = tradingAgent.AnalyzeEarningsStability();
+            var financialStrength = tradingAgent.AnalyzeFinancialStrength();
+            var valuation = tradingAgent.AnalyzeValuation();
 
             // Log analysis results
             Logger.Info($"Earnings Stability: {string.Join(", ", earningsStability["Details"])}");
