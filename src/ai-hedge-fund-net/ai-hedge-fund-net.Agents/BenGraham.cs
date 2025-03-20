@@ -9,19 +9,11 @@ public class BenGraham : ITradingAgent
     public string Name => nameof(BenGraham);
     private readonly TradingWorkflowState _tradingWorkflowState;
     private readonly IChatter _chatter;
-    private readonly IDictionary<string, FinancialMetrics> _financialMetrics;
-    private readonly IDictionary<string, IEnumerable<FinancialLineItem>> _financialLineItems;
-    private readonly decimal _marketCap;
 
-    public BenGraham(TradingWorkflowState tradingWorkflowState, IChatter chatter,
-        IDictionary<string, FinancialMetrics> financialMetrics,
-        IDictionary<string, IEnumerable<FinancialLineItem>> financialLineItems, decimal marketCap)
+    public BenGraham(TradingWorkflowState tradingWorkflowState, IChatter chatter)
     {
         _tradingWorkflowState = tradingWorkflowState;
         _chatter = chatter;
-        _financialMetrics = financialMetrics;
-        _financialLineItems = financialLineItems;
-        _marketCap = marketCap;
     }
 
     public IDictionary<string, IDictionary<string, IEnumerable<string>>> AnalyzeEarningsStability()
@@ -37,7 +29,7 @@ public class BenGraham : ITradingAgent
             var details = new List<string>();
             int score = 0;
 
-            var epsValues = _financialLineItems[ticker]
+            var epsValues = _tradingWorkflowState.FinancialLineItems[ticker]
                 .Where(item => item.Extras.ContainsKey("EarningsPerShare"))
                 .Select(item => item.Extras["EarningsPerShare"])
                 .ToList();
@@ -80,7 +72,7 @@ public class BenGraham : ITradingAgent
         return results;
     }
 
-    public IDictionary<string, IEnumerable<string>> AnalyzeFinancialStrength()
+    public IDictionary<string, FinancialStrength> AnalyzeFinancialStrength()
     {
         // Graham checks liquidity(current ratio >= 2), manageable debt,
         // and dividend record(preferably some history of dividends).
@@ -88,65 +80,75 @@ public class BenGraham : ITradingAgent
         var details = new List<string>();
         int score = 0;
 
-        var latestItem = financialLineItems.LastOrDefault();
-        if (latestItem == null)
-        {
-            details.Add("No data for financial strength analysis");
-            return new Dictionary<string, IEnumerable<string>> { { "Score", new[] { score.ToString() } }, { "Details", details } };
-        }
+        var results = new Dictionary<string, FinancialStrength>();
 
-        decimal totalAssets = latestItem.Extras["TotalAssets"] ?? 0;
-        decimal totalLiabilities = latestItem.Extras["TotalLiabilities"] ?? 0;
-        decimal currentAssets = latestItem.Extras["CurrentAssets"] ?? 0;
-        decimal currentLiabilities = latestItem.Extras["CurrentLiabilities"] ?? 0;
-
-        if (currentLiabilities > 0)
+        foreach (var ticker in _tradingWorkflowState.Tickers)
         {
-            decimal currentRatio = currentAssets / currentLiabilities;
-            if (currentRatio >= 2.0m)
+            var latestItem = _tradingWorkflowState.FinancialLineItems[ticker].LastOrDefault();
+            if (latestItem == null)
             {
-                score += 2;
-                details.Add($"Current ratio = {currentRatio:F2} (>=2.0: solid).");
+                details.Add("No data for financial strength analysis");
+                return new Dictionary<string, FinancialStrength>
+                {
+                    { ticker, new FinancialStrength(score, details) }
+                };
             }
-            else if (currentRatio >= 1.5m)
+
+            decimal totalAssets = latestItem.Extras["TotalAssets"] ?? 0;
+            decimal totalLiabilities = latestItem.Extras["TotalLiabilities"] ?? 0;
+            decimal currentAssets = latestItem.Extras["CurrentAssets"] ?? 0;
+            decimal currentLiabilities = latestItem.Extras["CurrentLiabilities"] ?? 0;
+
+            if (currentLiabilities > 0)
             {
-                score += 1;
-                details.Add($"Current ratio = {currentRatio:F2} (moderately strong).");
+                decimal currentRatio = currentAssets / currentLiabilities;
+                if (currentRatio >= 2.0m)
+                {
+                    score += 2;
+                    details.Add($"Current ratio = {currentRatio:F2} (>=2.0: solid).");
+                }
+                else if (currentRatio >= 1.5m)
+                {
+                    score += 1;
+                    details.Add($"Current ratio = {currentRatio:F2} (moderately strong).");
+                }
+                else
+                {
+                    details.Add($"Current ratio = {currentRatio:F2} (<1.5: weaker liquidity).");
+                }
             }
             else
             {
-                details.Add($"Current ratio = {currentRatio:F2} (<1.5: weaker liquidity).");
+                details.Add("Cannot compute current ratio (missing or zero current liabilities). ");
             }
-        }
-        else
-        {
-            details.Add("Cannot compute current ratio (missing or zero current liabilities). ");
-        }
 
-        if (totalAssets > 0)
-        {
-            decimal debtRatio = totalLiabilities / totalAssets;
-            if (debtRatio < 0.5m)
+            if (totalAssets > 0)
             {
-                score += 2;
-                details.Add($"Debt ratio = {debtRatio:F2}, under 0.50 (conservative).");
-            }
-            else if (debtRatio < 0.8m)
-            {
-                score += 1;
-                details.Add($"Debt ratio = {debtRatio:F2}, somewhat high but could be acceptable.");
+                decimal debtRatio = totalLiabilities / totalAssets;
+                if (debtRatio < 0.5m)
+                {
+                    score += 2;
+                    details.Add($"Debt ratio = {debtRatio:F2}, under 0.50 (conservative).");
+                }
+                else if (debtRatio < 0.8m)
+                {
+                    score += 1;
+                    details.Add($"Debt ratio = {debtRatio:F2}, somewhat high but could be acceptable.");
+                }
+                else
+                {
+                    details.Add($"Debt ratio = {debtRatio:F2}, quite high by Graham standards.");
+                }
             }
             else
             {
-                details.Add($"Debt ratio = {debtRatio:F2}, quite high by Graham standards.");
+                details.Add("Cannot compute debt ratio (missing total assets).");
             }
-        }
-        else
-        {
-            details.Add("Cannot compute debt ratio (missing total assets).");
+
+            results.Add(ticker, new FinancialStrength(score, details));
         }
 
-        return new Dictionary<string, IEnumerable<string>> { { "Score", new[] { score.ToString() } }, { "Details", details } };
+        return results;
     }
 
     public IDictionary<string, IEnumerable<string>> AnalyzeValuation()
@@ -158,24 +160,28 @@ public class BenGraham : ITradingAgent
 
         var details = new List<string>();
         int score = 0;
-        var latest = financialLineItems.LastOrDefault();
-        if (latest == null || marketCap <= 0)
+        foreach (var ticker in _tradingWorkflowState.Tickers)
         {
-            details.Add("Insufficient data to perform valuation.");
-            return new Dictionary<string, IEnumerable<string>> { { "Score", new[] { score.ToString() } }, { "Details", details } };
-        }
+            var latest = _tradingWorkflowState.FinancialLineItems[ticker].LastOrDefault();
+            if (latest == null || _tradingWorkflowState.FinancialMetrics[ticker].MarketCap <= 0)
+            {
+                details.Add("Insufficient data to perform valuation.");
+                return new Dictionary<string, IEnumerable<string>> { { "Score", new[] { score.ToString() } }, { "Details", details } };
+            }
 
-        decimal netCurrentAssetValue = (latest.Extras["CurrentAssets"] ?? 0) - (latest.Extras["TotalLiabilities"] ?? 0);
-        if (netCurrentAssetValue > marketCap)
-        {
-            score += 4;
-            details.Add("Net-Net: NCAV > Market Cap (classic Graham deep value).");
+            decimal netCurrentAssetValue = (latest.Extras["CurrentAssets"] ?? 0) - (latest.Extras["TotalLiabilities"] ?? 0);
+            if (netCurrentAssetValue > _tradingWorkflowState.FinancialMetrics[ticker].MarketCap)
+            {
+                score += 4;
+                details.Add("Net-Net: NCAV > Market Cap (classic Graham deep value).");
+            }
+            else if (netCurrentAssetValue >= _tradingWorkflowState.FinancialMetrics[ticker].MarketCap * 0.67m)
+            {
+                score += 2;
+                details.Add("NCAV Per Share >= 2/3 of Price Per Share (moderate net-net discount).");
+            }
         }
-        else if (netCurrentAssetValue >= marketCap * 0.67m)
-        {
-            score += 2;
-            details.Add("NCAV Per Share >= 2/3 of Price Per Share (moderate net-net discount).");
-        }
+        
 
         return new Dictionary<string, IEnumerable<string>> { { "Score", new[] { score.ToString() } }, { "Details", details } };
     }

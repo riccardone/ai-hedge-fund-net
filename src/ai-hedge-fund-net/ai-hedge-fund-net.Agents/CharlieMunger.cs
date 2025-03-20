@@ -12,7 +12,7 @@ public class CharlieMunger : ITradingAgent
         throw new NotImplementedException();
     }
 
-    public IDictionary<string, IEnumerable<string>> AnalyzeFinancialStrength()
+    public IDictionary<string, FinancialStrength> AnalyzeFinancialStrength()
     {
         throw new NotImplementedException();
     }

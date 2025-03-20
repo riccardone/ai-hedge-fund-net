@@ -3,7 +3,7 @@
 public class TradingWorkflowState
 {
     public IDictionary<string, FinancialMetrics> FinancialMetrics { get; set; } = new Dictionary<string, FinancialMetrics>();
-    public List<FinancialLineItem> FinancialLineItems { get; set; } = new();
+    public IDictionary<string, IEnumerable<FinancialLineItem>> FinancialLineItems { get; set; } = new Dictionary<string, IEnumerable<FinancialLineItem>>();
 
     public List<string> Tickers { get; set; } = new();
     public string StartDate { get; set; } = string.Empty;

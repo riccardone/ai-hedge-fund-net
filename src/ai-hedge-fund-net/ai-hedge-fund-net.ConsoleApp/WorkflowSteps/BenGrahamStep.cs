@@ -25,8 +25,7 @@ namespace ai_hedge_fund_net.ConsoleApp.WorkflowSteps
             var workflowState = context.Workflow.Data as TradingWorkflowState;
 
             string modelProvider = workflowState.ModelProvider;
-            //var httpClient = _httpClientFactory.CreateClient(modelProvider); // Dynamic provider selection
-            //var httpService = new HttpService(httpClient);
+            var httpClient = _httpClientFactory.CreateClient(modelProvider); // Dynamic provider selection
 
             var tradingAgent = new BenGraham(workflowState, _chatter);
 

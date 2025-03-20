@@ -27,7 +27,7 @@ public class AlphaVantageService : IDataReader
             var overviewData = await FetchDataAsync($"query?function=OVERVIEW&symbol={ticker}&apikey={_apiKey}");
             if (overviewData.HasValue)
             {
-                metrics.MarketCap = ParseDouble(overviewData.Value, "MarketCapitalization");
+                metrics.MarketCap = 1000; // TODO ParseDouble(overviewData.Value, "MarketCapitalization");
                 metrics.PriceToEarningsRatio = ParseDouble(overviewData.Value, "PERatio");
                 metrics.PriceToBookRatio = ParseDouble(overviewData.Value, "PriceToBookRatio");
                 metrics.ReturnOnEquity = ParseDouble(overviewData.Value, "ReturnOnEquityTTM");

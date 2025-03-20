@@ -12,6 +12,11 @@ public class DataReader : IDataReader
         throw new NotImplementedException();
     }
 
+    public Task<FinancialMetrics> GetFinancialMetricsAsync(string ticker)
+    {
+        throw new NotImplementedException();
+    }
+
     public IEnumerable<FinancialMetrics> GetFinancialMetrics(string ticker, DateTime endDate, string period = "ttm", int limit = 10)
     {
         throw new NotImplementedException();

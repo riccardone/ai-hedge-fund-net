@@ -7,7 +7,7 @@ public class FinancialMetrics
     public string Period { get; set; }
     public string Currency { get; set; }    
 
-    public double? MarketCap { get; set; }
+    public decimal? MarketCap { get; set; }
     public double? EnterpriseValue { get; set; }
     public double? PriceToEarningsRatio { get; set; }
     public double? PriceToBookRatio { get; set; }
