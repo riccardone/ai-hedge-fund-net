@@ -1,4 +1,5 @@
 ﻿using ai_hedge_fund_net.Agents;
+using ai_hedge_fund_net.Contracts;
 using ai_hedge_fund_net.Contracts.Model;
 using NLog;
 using WorkflowCore.Interface;
@@ -8,10 +9,10 @@ namespace ai_hedge_fund_net.ConsoleApp.WorkflowSteps;
 
 public class InitializeTradingStateStep : StepBody
 {
-    private readonly AlphaVantageService _alphaVantageService;
+    private readonly IDataReader _alphaVantageService;
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
-    public InitializeTradingStateStep(AlphaVantageService alphaVantageService)
+    public InitializeTradingStateStep(IDataReader alphaVantageService)
     {
         _alphaVantageService = alphaVantageService;
     }

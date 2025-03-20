@@ -32,6 +32,7 @@
     <ProjectReference Include="..\ai-hedge-fund-net.Agents\ai-hedge-fund-net.Agents.csproj" />
     <ProjectReference Include="..\ai-hedge-fund-net.Contracts\ai-hedge-fund-net.Contracts.csproj" />
     <ProjectReference Include="..\ai-hedge-fund-net.DataReader\ai-hedge-fund-net.DataReader.csproj" />
+    <ProjectReference Include="..\ai-hedge-fund-net.Data\ai-hedge-fund-net.Data.csproj" />
   </ItemGroup>
 
   <ItemGroup>
