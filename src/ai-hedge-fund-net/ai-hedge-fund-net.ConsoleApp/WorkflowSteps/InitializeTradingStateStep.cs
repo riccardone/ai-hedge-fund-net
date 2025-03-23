@@ -1,6 +1,6 @@
-﻿using ai_hedge_fund_net.Agents;
-using ai_hedge_fund_net.Contracts;
+﻿using ai_hedge_fund_net.Contracts;
 using ai_hedge_fund_net.Contracts.Model;
+using Microsoft.Extensions.DependencyInjection;
 using NLog;
 using WorkflowCore.Interface;
 using WorkflowCore.Models;
@@ -9,13 +9,7 @@ namespace ai_hedge_fund_net.ConsoleApp.WorkflowSteps;
 
 public class InitializeTradingStateStep : StepBody
 {
-    private readonly IDataReader _datareader;
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
-
-    public InitializeTradingStateStep(IDataReader datareader)
-    {
-        _datareader = datareader;
-    }
 
     public override ExecutionResult Run(IStepExecutionContext context)
     {
@@ -62,16 +56,14 @@ public class InitializeTradingStateStep : StepBody
         // Initialize empty trade decisions
         state.TradeDecisions = new Dictionary<string, TradeDecision>();
 
+        var dataReader = ServiceLocator.Instance.GetRequiredService<IDataReader>();
+
         foreach (var ticker in state.Tickers)
         {
-            if (_datareader.TryGetFinancialMetricsAsync(ticker, DateTime.Today, "ttm", 10, out var metrics))
-            {
+            if (dataReader.TryGetFinancialMetricsAsync(ticker, DateTime.Today, "ttm", 10, out var metrics))
                 state.FinancialMetrics.Add(ticker, metrics);
-            }
-            if (_datareader.TryGetFinancialMetricsAsync(ticker, DateTime.Today, "ttm", 10, out var metrics))
-            {
-                state.FinancialMetrics.Add(ticker, metrics);
-            }
+            if (dataReader.TryGetFinancialLineItemsAsync(ticker, new []{""}, DateTime.Today, "ttm", 10, out var financialLineItems))
+                state.FinancialLineItems.Add(ticker, financialLineItems);
         }
 
         Logger.Info("Trading workflow state initialized:");

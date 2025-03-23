@@ -2,6 +2,7 @@
 using System.Globalization;
 using System.Text.Json;
 using ai_hedge_fund_net.Contracts.Model;
+using Microsoft.Extensions.Options;
 using NLog;
 using IDataReader = ai_hedge_fund_net.Contracts.IDataReader;
 
@@ -13,10 +14,10 @@ public class AlphaVantageDataReader : IDataReader
     private readonly HttpClient _client;
     private readonly string _apiKey;
 
-    public AlphaVantageDataReader(HttpClient httpClient, string apiKey)
+    public AlphaVantageDataReader(HttpClient httpClient, IOptions<AlphaVantageOptions> options)
     {
         _client = httpClient;
-        _apiKey = apiKey;
+        _apiKey = options.Value.ApiKey;
     }
 
     private async Task<JsonElement?> FetchDataAsync(string endpoint)
@@ -180,6 +181,23 @@ public class AlphaVantageDataReader : IDataReader
         return true;
     }
 
+    public bool TryGetFinancialLineItemsAsync(string ticker, string[] lineItems, DateTime endDate, string period, int limit,
+        out IList<FinancialLineItem> financialLineItems)
+    {
+        financialLineItems = new List<FinancialLineItem>();
+        try
+        {
+            financialLineItems = SearchLineItemsAsync(ticker, lineItems, endDate, period, limit).Result.ToList();
+            return true;
+        }
+        catch (Exception e)
+        {
+            Logger.Error(
+                $"Error while {nameof(AlphaVantageDataReader)}/{nameof(TryGetFinancialLineItemsAsync)}: {e.GetBaseException().Message}");
+            return false;
+        }
+    }
+
     private List<JsonElement> GetFilteredReports(JsonElement? data, string key, DateTime endDate, int limit)
     {
         var reports = new List<JsonElement>();
@@ -196,7 +214,7 @@ public class AlphaVantageDataReader : IDataReader
         return reports;
     }
 
-    public async Task<IEnumerable<FinancialLineItem>> SearchLineItemsAsync(string ticker, string[] lineItems, DateTime endDate, string period = "ttm", int limit = 10)
+    private async Task<IEnumerable<FinancialLineItem>> SearchLineItemsAsync(string ticker, string[] lineItems, DateTime endDate, string period = "ttm", int limit = 10)
     {
         var result = new List<FinancialLineItem>();
         try
