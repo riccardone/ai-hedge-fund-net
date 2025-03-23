@@ -66,6 +66,10 @@ public class InitializeTradingStateStep : StepBody
                 state.FinancialLineItems.Add(ticker, financialLineItems);
         }
 
+        if (!state.FinancialLineItems.Any() || !state.FinancialMetrics.Any())
+            throw new Exception(
+                "While initializing the Trading Workflow I haven't found any financial data or metrics. Please make sure you have set the config settings to retrieve the data");
+
         Logger.Info("Trading workflow state initialized:");
         Logger.Info($"Start Date: {state.StartDate}, End Date: {state.EndDate}");
         Logger.Info($"Tickers: {string.Join(", ", state.Tickers)}");

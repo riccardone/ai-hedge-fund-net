@@ -174,7 +174,7 @@ public class AlphaVantageDataReader : IDataReader
         }
         catch (Exception ex)
         {
-            Logger.Error($"Error fetching metrics for {ticker}: {ex.Message}");
+            Logger.Error($"{nameof(AlphaVantageDataReader)}/{nameof(TryGetFinancialMetricsAsync)} for {ticker}: {ex.Message}");
             return false;
         }
 
@@ -190,10 +190,8 @@ public class AlphaVantageDataReader : IDataReader
             financialLineItems = SearchLineItemsAsync(ticker, lineItems, endDate, period, limit).Result.ToList();
             return true;
         }
-        catch (Exception e)
+        catch
         {
-            Logger.Error(
-                $"Error while {nameof(AlphaVantageDataReader)}/{nameof(TryGetFinancialLineItemsAsync)}: {e.GetBaseException().Message}");
             return false;
         }
     }
@@ -217,45 +215,39 @@ public class AlphaVantageDataReader : IDataReader
     private async Task<IEnumerable<FinancialLineItem>> SearchLineItemsAsync(string ticker, string[] lineItems, DateTime endDate, string period = "ttm", int limit = 10)
     {
         var result = new List<FinancialLineItem>();
-        try
+
+        // Load data from Alpha Vantage
+        var balanceSheetData = await FetchDataAsync($"query?function=BALANCE_SHEET&symbol={ticker}&apikey={_apiKey}");
+        var incomeStatementData = await FetchDataAsync($"query?function=INCOME_STATEMENT&symbol={ticker}&apikey={_apiKey}");
+        var cashFlowData = await FetchDataAsync($"query?function=CASH_FLOW&symbol={ticker}&apikey={_apiKey}");
+
+        // Collect reports by period (e.g., annualReports or quarterlyReports)
+        var balanceReports = GetFilteredReports(balanceSheetData, GetPeriodKey(period), endDate, limit);
+        var incomeReports = GetFilteredReports(incomeStatementData, GetPeriodKey(period), endDate, limit);
+        var cashFlowReports = GetFilteredReports(cashFlowData, GetPeriodKey(period), endDate, limit);
+
+        // Merge reports by fiscal date
+        var allReports = MergeReportsByDate(balanceReports, incomeReports, cashFlowReports);
+
+        foreach (var (fiscalDate, reportData) in allReports)
         {
-            // Load data from Alpha Vantage
-            var balanceSheetData = await FetchDataAsync($"query?function=BALANCE_SHEET&symbol={ticker}&apikey={_apiKey}");
-            var incomeStatementData = await FetchDataAsync($"query?function=INCOME_STATEMENT&symbol={ticker}&apikey={_apiKey}");
-            var cashFlowData = await FetchDataAsync($"query?function=CASH_FLOW&symbol={ticker}&apikey={_apiKey}");
+            var extras = new Dictionary<string, dynamic>(StringComparer.OrdinalIgnoreCase);
 
-            // Collect reports by period (e.g., annualReports or quarterlyReports)
-            var balanceReports = GetFilteredReports(balanceSheetData, GetPeriodKey(period), endDate, limit);
-            var incomeReports = GetFilteredReports(incomeStatementData, GetPeriodKey(period), endDate, limit);
-            var cashFlowReports = GetFilteredReports(cashFlowData, GetPeriodKey(period), endDate, limit);
-
-            // Merge reports by fiscal date
-            var allReports = MergeReportsByDate(balanceReports, incomeReports, cashFlowReports);
-
-            foreach (var (fiscalDate, reportData) in allReports)
+            foreach (var item in lineItems)
             {
-                var extras = new Dictionary<string, dynamic>(StringComparer.OrdinalIgnoreCase);
-
-                foreach (var item in lineItems)
-                {
-                    if (reportData.TryGetValue(item, out var value))
-                        extras[item] = value;
-                    else
-                        extras[item] = null;
-                }
-
-                result.Add(new FinancialLineItem(
-                    ticker: ticker,
-                    reportPeriod: fiscalDate.ToString("yyyy-MM-dd"),
-                    period: period,
-                    currency: "USD", // Alpha Vantage reports are usually in USD
-                    extras: extras
-                ));
+                if (reportData.TryGetValue(item, out var value))
+                    extras[item] = value;
+                else
+                    extras[item] = null;
             }
-        }
-        catch (Exception ex)
-        {
-            Logger.Error($"SearchLineItemsAsync failed for {ticker}: {ex.Message}");
+
+            result.Add(new FinancialLineItem(
+                ticker: ticker,
+                reportPeriod: fiscalDate.ToString("yyyy-MM-dd"),
+                period: period,
+                currency: "USD", // Alpha Vantage reports are usually in USD
+                extras: extras
+            ));
         }
 
         return result;
