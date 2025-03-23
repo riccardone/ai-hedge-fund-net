@@ -22,7 +22,7 @@ public class WarrenBuffett : ITradingAgent
         throw new NotImplementedException();
     }
 
-    public Task<TradeSignal> GenerateOutputAsync()
+    public TradeSignal GenerateOutput()
     {
         throw new NotImplementedException();
     }

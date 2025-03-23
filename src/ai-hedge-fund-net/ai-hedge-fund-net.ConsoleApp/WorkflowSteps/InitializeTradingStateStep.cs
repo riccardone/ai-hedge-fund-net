@@ -9,12 +9,12 @@ namespace ai_hedge_fund_net.ConsoleApp.WorkflowSteps;
 
 public class InitializeTradingStateStep : StepBody
 {
-    private readonly IDataReader _alphaVantageService;
+    private readonly IDataReader _datareader;
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
-    public InitializeTradingStateStep(IDataReader alphaVantageService)
+    public InitializeTradingStateStep(IDataReader datareader)
     {
-        _alphaVantageService = alphaVantageService;
+        _datareader = datareader;
     }
 
     public override ExecutionResult Run(IStepExecutionContext context)
@@ -64,7 +64,14 @@ public class InitializeTradingStateStep : StepBody
 
         foreach (var ticker in state.Tickers)
         {
-            state.FinancialMetrics.Add(ticker, _alphaVantageService.GetFinancialMetricsAsync(state.Tickers.First()).Result);
+            if (_datareader.TryGetFinancialMetricsAsync(ticker, DateTime.Today, "ttm", 10, out var metrics))
+            {
+                state.FinancialMetrics.Add(ticker, metrics);
+            }
+            if (_datareader.TryGetFinancialMetricsAsync(ticker, DateTime.Today, "ttm", 10, out var metrics))
+            {
+                state.FinancialMetrics.Add(ticker, metrics);
+            }
         }
 
         Logger.Info("Trading workflow state initialized:");

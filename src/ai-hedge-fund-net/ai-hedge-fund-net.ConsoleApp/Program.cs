@@ -96,7 +96,7 @@ public class Program
         {
             var config = provider.GetRequiredService<IConfiguration>();
             var apiKey = config["AlphaVantage:ApiKey"];
-            return new AlphaVantageService(provider.GetRequiredService<HttpClient>(), apiKey);
+            return new AlphaVantageDataReader(provider.GetRequiredService<HttpClient>(), apiKey);
         });
 
         var serviceProvider = services.BuildServiceProvider();
