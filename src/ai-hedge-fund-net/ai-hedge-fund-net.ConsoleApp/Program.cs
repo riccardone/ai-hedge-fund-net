@@ -50,6 +50,7 @@ public class Program
                 loggingBuilder.AddFilter("System.Net.Http.*", Microsoft.Extensions.Logging.LogLevel.Error);
             })
             .AddWorkflow()
+            .AddSingleton<IChatter, HttpAiChatter>()
             .AddSingleton<TradingWorkflow>()
             .AddSingleton<BenGrahamStep>()
             .AddSingleton<BillAckmanStep>()
