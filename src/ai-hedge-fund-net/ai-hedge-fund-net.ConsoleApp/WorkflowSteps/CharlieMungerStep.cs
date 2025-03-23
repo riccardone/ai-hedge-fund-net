@@ -33,7 +33,7 @@ namespace ai_hedge_fund_net.ConsoleApp.WorkflowSteps
             Logger.Info($"Financial Strength: {string.Join(", ", financialStrength["Details"])}");
             Logger.Info($"Valuation: {string.Join(", ", valuation["Details"])}");
 
-            ExecutionResult.Outcome(tradingAgent.GenerateOutputAsync().Result);
+            ExecutionResult.Outcome(tradingAgent.GenerateOutput());
 
             return ExecutionResult.Next();
         }

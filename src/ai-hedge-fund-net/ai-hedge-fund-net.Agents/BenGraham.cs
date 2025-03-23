@@ -162,20 +162,21 @@ public class BenGraham : ITradingAgent
         int score = 0;
         foreach (var ticker in _tradingWorkflowState.Tickers)
         {
+            // TODO check if taking the last financialmetrics.marketcap is correct or we should get it differently
             var latest = _tradingWorkflowState.FinancialLineItems[ticker].LastOrDefault();
-            if (latest == null || _tradingWorkflowState.FinancialMetrics[ticker].MarketCap <= 0)
+            if (latest == null || _tradingWorkflowState.FinancialMetrics[ticker].Last().MarketCap <= 0)
             {
                 details.Add("Insufficient data to perform valuation.");
                 return new Dictionary<string, IEnumerable<string>> { { "Score", new[] { score.ToString() } }, { "Details", details } };
             }
 
             decimal netCurrentAssetValue = (latest.Extras["CurrentAssets"] ?? 0) - (latest.Extras["TotalLiabilities"] ?? 0);
-            if (netCurrentAssetValue > _tradingWorkflowState.FinancialMetrics[ticker].MarketCap)
+            if (netCurrentAssetValue > _tradingWorkflowState.FinancialMetrics[ticker].Last().MarketCap)
             {
                 score += 4;
                 details.Add("Net-Net: NCAV > Market Cap (classic Graham deep value).");
             }
-            else if (netCurrentAssetValue >= _tradingWorkflowState.FinancialMetrics[ticker].MarketCap * 0.67m)
+            else if (netCurrentAssetValue >= _tradingWorkflowState.FinancialMetrics[ticker].Last().MarketCap * 0.67m)
             {
                 score += 2;
                 details.Add("NCAV Per Share >= 2/3 of Price Per Share (moderate net-net discount).");
@@ -186,7 +187,7 @@ public class BenGraham : ITradingAgent
         return new Dictionary<string, IEnumerable<string>> { { "Score", new[] { score.ToString() } }, { "Details", details } };
     }
 
-    public async Task<TradeSignal> GenerateOutputAsync()
+    public TradeSignal GenerateOutput()
     {
         var tickers = _tradingWorkflowState.Tickers;
         if (tickers == null || tickers.Count == 0)
