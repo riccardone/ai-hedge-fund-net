@@ -61,11 +61,15 @@ public class Program
             .AddSingleton<RiskManagementStep>()
             .AddSingleton<PortfolioManagementStep>();
 
-        var configBuilder = new ConfigurationBuilder()
-            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-            .AddEnvironmentVariables();
-        var configuration = configBuilder.Build();
+        var configuration = BuildConfig();
         services.AddSingleton<IConfiguration>(configuration);
+        services.AddHttpClient<AlphaVantageDataReader>(client =>
+        {
+            client.BaseAddress = new Uri("https://www.alphavantage.co/");
+        });
+        services.Configure<AlphaVantageOptions>(configuration.GetSection("AlphaVantage"));
+        services.AddSingleton<IDataReader, AlphaVantageDataReader>();
+        services.AddSingleton<IDataReader, AlphaVantageDataReader>();
 
         services.AddHttpClient();
         services.AddHttpClient("OpenAI", client =>
@@ -88,18 +92,9 @@ public class Program
             client.BaseAddress = new Uri("https://api.deepseek.com/v1/");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
         });
-        services.AddHttpClient<IDataReader>(client =>
-        {
-            client.BaseAddress = new Uri("https://www.alphavantage.co/");
-        });
-        services.AddSingleton(provider =>
-        {
-            var config = provider.GetRequiredService<IConfiguration>();
-            var apiKey = config["AlphaVantage:ApiKey"];
-            return new AlphaVantageDataReader(provider.GetRequiredService<HttpClient>(), apiKey);
-        });
 
         var serviceProvider = services.BuildServiceProvider();
+        ServiceLocator.Init(serviceProvider);
         var host = serviceProvider.GetRequiredService<IWorkflowHost>();
         host.RegisterWorkflow<TradingWorkflow, TradingWorkflowState>();
 
@@ -137,6 +132,17 @@ public class Program
 
         host.Stop();
         Logger.Info("Workflow Stopped.");
+    }
+
+    private static IConfigurationRoot BuildConfig()
+    {
+        var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "dev";
+        var builder = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
+            .AddJsonFile($"appsettings.{env}.json", optional: true, reloadOnChange: false)
+            .AddEnvironmentVariables();
+        return builder.Build();
     }
 
     private static string? ParseArgument(string[] args, string key)
