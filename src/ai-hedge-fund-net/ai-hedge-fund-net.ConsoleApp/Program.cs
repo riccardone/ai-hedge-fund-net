@@ -6,7 +6,6 @@ using Microsoft.Extensions.Logging;
 using NLog;
 using NLog.Extensions.Logging;
 using System.Net.Http.Headers;
-using ai_hedge_fund_net.Agents;
 using ai_hedge_fund_net.Contracts;
 using ai_hedge_fund_net.Data;
 using WorkflowCore.Interface;
@@ -64,35 +63,32 @@ public class Program
 
         var configuration = BuildConfig();
         services.AddSingleton<IConfiguration>(configuration);
-        services.AddHttpClient<AlphaVantageDataReader>(client =>
-        {
-            client.BaseAddress = new Uri("https://www.alphavantage.co/");
-        });
-        services.Configure<AlphaVantageOptions>(configuration.GetSection("AlphaVantage"));
-        services.AddSingleton<IDataReader, AlphaVantageDataReader>();
         services.AddSingleton<IDataReader, AlphaVantageDataReader>();
 
         services.AddHttpClient();
+        services.AddHttpClient("AlphaVantage", client =>
+        {
+            var apiKey = configuration["AlphaVantage:ApiKey"];
+            if (string.IsNullOrEmpty(apiKey))
+                throw new InvalidOperationException("AlphaVantage API key is missing in configuration.");
+            client.BaseAddress = new Uri("https://www.alphavantage.co");
+        }).AddHttpMessageHandler(() => new AlphaVantageAuthHandler(configuration["AlphaVantage:ApiKey"])); ;
         services.AddHttpClient("OpenAI", client =>
         {
             var apiKey = configuration["OpenAI:ApiKey"];
             if (string.IsNullOrEmpty(apiKey))
-            {
                 throw new InvalidOperationException("OpenAI API key is missing in configuration.");
-            }
             client.BaseAddress = new Uri("https://api.openai.com/v1/");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
         });
-        services.AddHttpClient("DeepSeek", client =>
-        {
-            var apiKey = configuration["DeepSeek:ApiKey"];
-            if (string.IsNullOrEmpty(apiKey))
-            {
-                throw new InvalidOperationException("DeepSeek API key is missing in configuration.");
-            }
-            client.BaseAddress = new Uri("https://api.deepseek.com/v1/");
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-        });
+        //services.AddHttpClient("DeepSeek", client =>
+        //{
+        //    var apiKey = configuration["DeepSeek:ApiKey"];
+        //    if (string.IsNullOrEmpty(apiKey))
+        //        throw new InvalidOperationException("DeepSeek API key is missing in configuration.");
+        //    client.BaseAddress = new Uri("https://api.deepseek.com/v1/");
+        //    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        //});
 
         var serviceProvider = services.BuildServiceProvider();
         ServiceLocator.Init(serviceProvider);
