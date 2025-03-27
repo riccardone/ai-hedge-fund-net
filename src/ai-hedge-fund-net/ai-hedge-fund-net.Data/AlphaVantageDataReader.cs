@@ -2,22 +2,19 @@
 using System.Globalization;
 using System.Text.Json;
 using ai_hedge_fund_net.Contracts.Model;
-using Microsoft.Extensions.Options;
+using ai_hedge_fund_net.Data.AlphaVantageModel;
 using NLog;
-using IDataReader = ai_hedge_fund_net.Contracts.IDataReader;
 
 namespace ai_hedge_fund_net.Data;
 
-public class AlphaVantageDataReader : IDataReader
+public class AlphaVantageDataReader : Contracts.IDataReader
 {
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
     private readonly HttpClient _client;
-    private readonly string _apiKey;
 
-    public AlphaVantageDataReader(HttpClient httpClient, IOptions<AlphaVantageOptions> options)
+    public AlphaVantageDataReader(IHttpClientFactory httpClientFactory)
     {
-        _client = httpClient;
-        _apiKey = options.Value.ApiKey;
+        _client = httpClientFactory.CreateClient("AlphaVantage");
     }
 
     private async Task<JsonElement?> FetchDataAsync(string endpoint)
@@ -30,6 +27,49 @@ public class AlphaVantageDataReader : IDataReader
             return doc.RootElement.Clone(); // Clone to avoid disposal issues
         }
         return null;
+    }
+
+    private bool TryFetchData<T>(string endpoint, out T result) where T : class 
+    {
+        //result = default;
+
+        try
+        {
+            var response = _client.GetAsync(endpoint).GetAwaiter().GetResult();
+            if (!response.IsSuccessStatusCode)
+            {
+                Logger.Warn("API call to '{0}' failed with status code {1}", endpoint, response.StatusCode);
+                result = null;
+                return false;
+            }
+
+            var jsonString = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+
+            result = JsonSerializer.Deserialize<T>(jsonString, options);
+            if (result != null) return true;
+            Logger.Warn("Deserialization returned null for endpoint '{0}'", endpoint);
+            return false;
+        }
+        catch (HttpRequestException ex)
+        {
+            Logger.Error(ex, "HTTP request failed for endpoint '{0}'", endpoint);
+        }
+        catch (JsonException ex)
+        {
+            Logger.Error(ex, "JSON deserialization failed for endpoint '{0}'", endpoint);
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, "Unexpected error in TryFetchData for endpoint '{0}'", endpoint);
+        }
+
+        result = null;
+        return false;
     }
 
     private double? ParseDouble(JsonElement data, string key)
@@ -50,7 +90,7 @@ public class AlphaVantageDataReader : IDataReader
 
         try
         {
-            var json = await FetchDataAsync($"query?function=TIME_SERIES_DAILY_ADJUSTED&symbol={ticker}&outputsize=full&apikey={_apiKey}");
+            var json = await FetchDataAsync($"query?function=TIME_SERIES_DAILY_ADJUSTED&symbol={ticker}&outputsize=full");
 
             if (!json.HasValue)
                 return prices;
@@ -111,62 +151,83 @@ public class AlphaVantageDataReader : IDataReader
 
         try
         {
-            // Fetch Overview
-            var overviewData = FetchDataAsync($"query?function=OVERVIEW&symbol={ticker}&apikey={_apiKey}").Result;
+            // Fetch CompanyOverview
+            CompanyOverview? overviewData = default;
+            if (TryFetchData<CompanyOverviewRaw>($"query?function=OVERVIEW&symbol={ticker}",
+                    out var companyOverviewRaw))
+                overviewData = CompanyOverviewMapper.Map(companyOverviewRaw);
 
-            // Fetch statements
-            var balanceSheetData = FetchDataAsync($"query?function=BALANCE_SHEET&symbol={ticker}&apikey={_apiKey}").Result;
-            var incomeStatementData = FetchDataAsync($"query?function=INCOME_STATEMENT&symbol={ticker}&apikey={_apiKey}").Result;
-            var cashFlowData = FetchDataAsync($"query?function=CASH_FLOW&symbol={ticker}&apikey={_apiKey}").Result;
-            var earningsData = FetchDataAsync($"query?function=EARNINGS&symbol={ticker}&apikey={_apiKey}").Result;
+            // Fetch BalanceSheet
+            BalanceSheet? balanceSheetData = default;
+            if (TryFetchData<BalanceSheetRaw>($"query?function=BALANCE_SHEET&symbol={ticker}",
+                    out var balanceSheetRaw))
+                balanceSheetData = BalanceSheetMapper.Map(balanceSheetRaw);
 
-            var balanceReports = GetFilteredReports(balanceSheetData, period, endDate, limit);
-            var incomeReports = GetFilteredReports(incomeStatementData, period, endDate, limit);
-            var cashFlowReports = GetFilteredReports(cashFlowData, period, endDate, limit);
-            var earningsReports = GetFilteredReports(earningsData, "annualEarnings", endDate, limit);
+            // Fetch IncomeStatement
+            IncomeStatement? incomeStatementData = default;
+            if (TryFetchData<IncomeStatementRaw>($"query?function=BALANCE_SHEET&symbol={ticker}",
+                    out var incomeStatementRaw))
+                incomeStatementData = IncomeStatementMapper.Map(incomeStatementRaw);
+
+            // Fetch IncomeStatement
+            CashFlow? cashFlowData = default;
+            if (TryFetchData<CashFlowRaw>($"query?function=BALANCE_SHEET&symbol={ticker}",
+                    out var cashFlowRaw))
+                cashFlowData = CashFlowMapper.Map(cashFlowRaw);
+
+            // Fetch IncomeStatement
+            Earnings? earningsData = default;
+            if (TryFetchData<EarningsRaw>($"query?function=BALANCE_SHEET&symbol={ticker}",
+                    out var earninFlowRaw))
+                earningsData = EarningsMapper.Map(earninFlowRaw);
+
+            var balanceReports = GetFilteredReports(balanceSheetData.QuarterlyReports, endDate, limit, r => r.FiscalDateEnding);
+            var incomeReports = GetFilteredReports(incomeStatementData.AnnualReports, endDate, 2, r => r.FiscalDateEnding);
+            var cashFlowReports = GetFilteredReports(cashFlowData.QuarterlyReports, endDate, limit, r => r.FiscalDateEnding);
+            var earningsReports = GetFilteredReports(earningsData.QuarterlyEarnings, endDate, limit, r => r.FiscalDateEnding);
 
             for (int i = 0; i < balanceReports.Count; i++)
             {
                 var tmpMetrics = new FinancialMetrics { Ticker = ticker };
 
-                if (overviewData.HasValue)
+                if (overviewData != null)
                 {
-                    tmpMetrics.MarketCap = 1000; // TODO Parse overview if available
-                    tmpMetrics.PriceToEarningsRatio = ParseDouble(overviewData.Value, "PERatio");
-                    tmpMetrics.PriceToBookRatio = ParseDouble(overviewData.Value, "PriceToBookRatio");
-                    tmpMetrics.ReturnOnEquity = ParseDouble(overviewData.Value, "ReturnOnEquityTTM");
-                    tmpMetrics.ReturnOnAssets = ParseDouble(overviewData.Value, "ReturnOnAssetsTTM");
-                    tmpMetrics.EarningsPerShare = ParseDouble(overviewData.Value, "EPS");
-                    tmpMetrics.RevenueGrowth = ParseDouble(overviewData.Value, "RevenueGrowthTTM");
+                    tmpMetrics.MarketCap = overviewData.MarketCapitalization; // TODO Parse overview if available
+                    tmpMetrics.PriceToEarningsRatio = overviewData.PERatio;
+                    tmpMetrics.PriceToBookRatio = overviewData.PriceToBookRatio;
+                    tmpMetrics.ReturnOnEquity = overviewData.ReturnOnEquityTTM;
+                    tmpMetrics.ReturnOnAssets = overviewData.ReturnOnAssetsTTM;
+                    tmpMetrics.EarningsPerShare = overviewData.EPS;
+                    tmpMetrics.RevenueGrowth = overviewData.QuarterlyRevenueGrowthYOY;
                 }
 
                 if (i < balanceReports.Count)
                 {
                     var bs = balanceReports[i];
-                    tmpMetrics.DebtToEquity = ParseDouble(bs, "totalLiabilities") / ParseDouble(bs, "totalShareholderEquity");
-                    tmpMetrics.DebtToAssets = ParseDouble(bs, "totalLiabilities") / ParseDouble(bs, "totalAssets");
-                    tmpMetrics.BookValuePerShare = ParseDouble(bs, "totalShareholderEquity") / ParseDouble(bs, "commonStockSharesOutstanding");
+                    tmpMetrics.DebtToEquity = bs.TotalLiabilities / bs.TotalShareholderEquity;
+                    tmpMetrics.DebtToAssets = bs.TotalLiabilities / bs.TotalAssets;
+                    tmpMetrics.BookValuePerShare = bs.TotalShareholderEquity / bs.CommonStockSharesOutstanding;
                 }
 
                 if (i < incomeReports.Count)
                 {
                     var inc = incomeReports[i];
-                    tmpMetrics.NetMargin = ParseDouble(inc, "netIncome") / ParseDouble(inc, "totalRevenue");
-                    tmpMetrics.OperatingIncomeGrowth = ParseDouble(inc, "operatingIncome") / ParseDouble(inc, "totalRevenue");
+                    tmpMetrics.NetMargin = inc.NetIncome / inc.TotalRevenue;
+                    tmpMetrics.OperatingIncomeGrowth = inc.OperatingIncome / inc.TotalRevenue;
                 }
 
                 if (i < cashFlowReports.Count)
                 {
                     var cf = cashFlowReports[i];
-                    var sharesOutstanding = ParseDouble(balanceReports[i], "commonStockSharesOutstanding");
-                    tmpMetrics.FreeCashFlowPerShare = ParseDouble(cf, "operatingCashflow") / sharesOutstanding;
-                    tmpMetrics.PayoutRatio = ParseDouble(cf, "dividendPayout") / ParseDouble(cf, "netIncome");
+                    var sharesOutstanding = balanceReports[i].CommonStockSharesOutstanding;
+                    tmpMetrics.FreeCashFlowPerShare = cf.OperatingCashFlow / sharesOutstanding;
+                    tmpMetrics.PayoutRatio = cf.DividendPayout / cf.NetIncome;
                 }
 
                 if (i < earningsReports.Count)
                 {
                     var er = earningsReports[i];
-                    tmpMetrics.EarningsPerShareGrowth = ParseDouble(er, "reportedEPS");
+                    tmpMetrics.EarningsPerShareGrowth = er.ReportedEPS;
                 }
 
                 metrics.Add(tmpMetrics);
@@ -196,6 +257,19 @@ public class AlphaVantageDataReader : IDataReader
         }
     }
 
+    private List<T> GetFilteredReports<T>(
+        List<T> reports,
+        DateTime endDate,
+        int limit,
+        Func<T, DateTime> dateSelector)
+    {
+        return reports
+            .Where(r => dateSelector(r) <= endDate)
+            .OrderByDescending(dateSelector)
+            .Take(limit)
+            .ToList();
+    }
+
     private List<JsonElement> GetFilteredReports(JsonElement? data, string key, DateTime endDate, int limit)
     {
         var reports = new List<JsonElement>();
@@ -217,9 +291,9 @@ public class AlphaVantageDataReader : IDataReader
         var result = new List<FinancialLineItem>();
 
         // Load data from Alpha Vantage
-        var balanceSheetData = await FetchDataAsync($"query?function=BALANCE_SHEET&symbol={ticker}&apikey={_apiKey}");
-        var incomeStatementData = await FetchDataAsync($"query?function=INCOME_STATEMENT&symbol={ticker}&apikey={_apiKey}");
-        var cashFlowData = await FetchDataAsync($"query?function=CASH_FLOW&symbol={ticker}&apikey={_apiKey}");
+        var balanceSheetData = await FetchDataAsync($"query?function=BALANCE_SHEET&symbol={ticker}");
+        var incomeStatementData = await FetchDataAsync($"query?function=INCOME_STATEMENT&symbol={ticker}");
+        var cashFlowData = await FetchDataAsync($"query?function=CASH_FLOW&symbol={ticker}");
 
         // Collect reports by period (e.g., annualReports or quarterlyReports)
         var balanceReports = GetFilteredReports(balanceSheetData, GetPeriodKey(period), endDate, limit);
