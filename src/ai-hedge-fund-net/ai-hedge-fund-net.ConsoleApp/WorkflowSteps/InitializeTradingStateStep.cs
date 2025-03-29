@@ -62,7 +62,7 @@ public class InitializeTradingStateStep : StepBody
         {
             if (dataReader.TryGetFinancialMetricsAsync(ticker, DateTime.Today, "ttm", 10, out var metrics))
                 state.FinancialMetrics.Add(ticker, metrics);
-            if (dataReader.TryGetFinancialLineItemsAsync(ticker, new []{""}, DateTime.Today, "ttm", 10, out var financialLineItems))
+            if (dataReader.TryGetFinancialLineItemsAsync(ticker, DateTime.Today, "ttm", 10, out var financialLineItems))
                 state.FinancialLineItems.Add(ticker, financialLineItems);
         }
 

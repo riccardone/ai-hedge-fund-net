@@ -3,16 +3,22 @@
 public class Earnings
 {
     public string Symbol { get; set; }
-    public List<EarningsReport> AnnualEarnings { get; set; }
-    public List<EarningsReport> QuarterlyEarnings { get; set; }
+    public List<AnnualEarning> AnnualEarnings { get; set; }
+    public List<QuarterlyEarning> QuarterlyEarnings { get; set; }
 }
 
-public class EarningsReport
+public class AnnualEarning
 {
     public DateTime FiscalDateEnding { get; set; }
-    public DateTime? ReportedDate { get; set; } // Only for quarterly earnings
-    public decimal? ReportedEPS { get; set; }
-    public decimal? EstimatedEPS { get; set; } // Only for quarterly earnings
-    public decimal? Surprise { get; set; } // Only for quarterly earnings
-    public decimal? SurprisePercentage { get; set; } // Only for quarterly earnings
+    public decimal ReportedEPS { get; set; }
+}
+
+public class QuarterlyEarning
+{
+    public DateTime FiscalDateEnding { get; set; }
+    public DateTime ReportedDate { get; set; }
+    public decimal ReportedEPS { get; set; }
+    public decimal EstimatedEPS { get; set; }
+    public decimal Surprise { get; set; }
+    public decimal SurprisePercentage { get; set; }
 }

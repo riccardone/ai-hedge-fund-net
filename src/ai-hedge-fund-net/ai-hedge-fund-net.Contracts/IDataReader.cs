@@ -5,9 +5,9 @@ namespace ai_hedge_fund_net.Contracts;
 
 public interface IDataReader
 {
-    Task<IEnumerable<Price>> GetPricesAsync(string ticker, DateTime startDate, DateTime endDate);
+    IEnumerable<Price> GetPrices(string ticker, DateTime startDate, DateTime endDate);
     bool TryGetFinancialMetricsAsync(string ticker, DateTime endDate, string period, int limit, out IList<FinancialMetrics> metrics);
-    bool TryGetFinancialLineItemsAsync(string ticker, string[] lineItems, DateTime endDate, string period, int limit, out IList<FinancialLineItem> financialLineItems);
+    bool TryGetFinancialLineItemsAsync(string ticker, DateTime endDate, string period, int limit, out IList<FinancialLineItem> financialLineItems);
     IEnumerable<InsiderTrade> GetInsiderTrades(string ticker, DateTime endDate, DateTime? startDate = null, int limit = 1000);
     IEnumerable<CompanyNews> GetCompanyNews(string ticker, DateTime endDate, DateTime startDate, int limit = 1000);
     decimal? GetMarketCap(string ticker, DateTime endDate);

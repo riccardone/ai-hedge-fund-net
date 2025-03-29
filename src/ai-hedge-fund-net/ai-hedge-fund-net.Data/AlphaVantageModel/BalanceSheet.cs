@@ -47,4 +47,14 @@ public class BalanceSheetReport
     public long? RetainedEarnings { get; set; }
     public long? CommonStock { get; set; }
     public long? CommonStockSharesOutstanding { get; set; }
+
+    public Dictionary<string, decimal?> GetLineItems()
+    {
+        return new Dictionary<string, decimal?>
+        {
+            ["TotalAssets"] = TotalAssets,
+            ["TotalLiabilities"] = TotalLiabilities,
+            ["TotalShareholderEquity"] = TotalShareholderEquity
+        };
+    }
 }

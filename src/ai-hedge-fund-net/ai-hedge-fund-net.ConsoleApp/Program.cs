@@ -64,6 +64,8 @@ public class Program
         var configuration = BuildConfig();
         services.AddSingleton<IConfiguration>(configuration);
         services.AddSingleton<IDataReader, AlphaVantageDataReader>();
+        services.AddSingleton<IDataFetcher, DataFetcher>();
+        services.AddSingleton<IDataManager, FileDataManager>();
 
         services.AddHttpClient();
         services.AddHttpClient("AlphaVantage", client =>
@@ -81,14 +83,6 @@ public class Program
             client.BaseAddress = new Uri("https://api.openai.com/v1/");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
         });
-        //services.AddHttpClient("DeepSeek", client =>
-        //{
-        //    var apiKey = configuration["DeepSeek:ApiKey"];
-        //    if (string.IsNullOrEmpty(apiKey))
-        //        throw new InvalidOperationException("DeepSeek API key is missing in configuration.");
-        //    client.BaseAddress = new Uri("https://api.deepseek.com/v1/");
-        //    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-        //});
 
         var serviceProvider = services.BuildServiceProvider();
         ServiceLocator.Init(serviceProvider);

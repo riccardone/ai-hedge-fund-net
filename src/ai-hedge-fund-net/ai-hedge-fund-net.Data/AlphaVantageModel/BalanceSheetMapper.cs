@@ -6,12 +6,37 @@ public static class BalanceSheetMapper
 {
     public static BalanceSheet Map(BalanceSheetRaw raw)
     {
-        return new BalanceSheet
+        //return new BalanceSheet
+        //{
+        //    Symbol = raw.Symbol,
+        //    AnnualReports = raw.AnnualReports?.Select(MapReportFromRaw).ToList() ?? new List<BalanceSheetReport>(),
+        //    QuarterlyReports = raw.QuarterlyReports?.Select(MapReportFromRaw).ToList() ?? new List<BalanceSheetReport>()
+        //};
+        var results = new BalanceSheet
         {
-            Symbol = raw.Symbol,
-            AnnualReports = raw.AnnualReports?.Select(MapReportFromRaw).ToList() ?? new List<BalanceSheetReport>(),
-            QuarterlyReports = raw.QuarterlyReports?.Select(MapReportFromRaw).ToList() ?? new List<BalanceSheetReport>()
+            Symbol = raw.Symbol
         };
+        results.QuarterlyReports = new List<BalanceSheetReport>();
+        foreach (var balanceSheetReportRaw in raw.QuarterlyReports)
+        {
+            var ciccio = MapReportFromRaw(balanceSheetReportRaw);
+            if (ciccio == null)
+            {
+                
+            }
+            results.QuarterlyReports.Add(ciccio);
+        }
+        results.AnnualReports = new List<BalanceSheetReport>();
+        foreach (var balanceSheetReportRaw in raw.AnnualReports)
+        {
+            var ciccio = MapReportFromRaw(balanceSheetReportRaw);
+            if (ciccio == null)
+            {
+
+            }
+            results.AnnualReports.Add(ciccio);
+        }
+        return results;
     }
 
     private static BalanceSheetReport MapReportFromRaw(BalanceSheetReportRaw raw)
