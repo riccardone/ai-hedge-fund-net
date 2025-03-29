@@ -1,6 +1,6 @@
 ﻿using System.Data;
 using System.Globalization;
-using System.Text.Json;
+using ai_hedge_fund_net.Contracts;
 using ai_hedge_fund_net.Contracts.Model;
 using ai_hedge_fund_net.Data.AlphaVantageModel;
 using NLog;
@@ -10,139 +10,44 @@ namespace ai_hedge_fund_net.Data;
 public class AlphaVantageDataReader : Contracts.IDataReader
 {
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
-    private readonly HttpClient _client;
+    private readonly IDataFetcher _dataFetcher;
 
-    public AlphaVantageDataReader(IHttpClientFactory httpClientFactory)
+    public AlphaVantageDataReader(IDataFetcher dataFetcher)
     {
-        _client = httpClientFactory.CreateClient("AlphaVantage");
+        _dataFetcher = dataFetcher;
     }
 
-    private async Task<JsonElement?> FetchDataAsync(string endpoint)
+    public IEnumerable<Price> GetPrices(string ticker, DateTime startDate, DateTime endDate)
     {
-        var response = await _client.GetAsync(endpoint);
-        if (response.IsSuccessStatusCode)
-        {
-            var jsonString = await response.Content.ReadAsStringAsync();
-            using JsonDocument doc = JsonDocument.Parse(jsonString);
-            return doc.RootElement.Clone(); // Clone to avoid disposal issues
-        }
-        return null;
-    }
+        var key = $"daily_{ticker}";
+        var query = $"query?function=TIME_SERIES_DAILY_ADJUSTED&symbol={ticker}&outputsize=full&apikey=demo";
 
-    private bool TryFetchData<T>(string endpoint, out T result) where T : class 
-    {
-        //result = default;
-
-        try
+        var prices = _dataFetcher.LoadOrFetch<TimeSeriesDailyResponse, List<Price>>(key, query, raw =>
         {
-            var response = _client.GetAsync(endpoint).GetAwaiter().GetResult();
-            if (!response.IsSuccessStatusCode)
+            var result = new List<Price>();
+
+            foreach (var kvp in raw.TimeSeries)
             {
-                Logger.Warn("API call to '{0}' failed with status code {1}", endpoint, response.StatusCode);
-                result = null;
-                return false;
-            }
+                if (!DateTime.TryParse(kvp.Key, out var date)) continue;
+                if (date < startDate || date > endDate) continue;
 
-            var jsonString = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                var data = kvp.Value;
 
-            var options = new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            };
-
-            result = JsonSerializer.Deserialize<T>(jsonString, options);
-            if (result != null) return true;
-            Logger.Warn("Deserialization returned null for endpoint '{0}'", endpoint);
-            return false;
-        }
-        catch (HttpRequestException ex)
-        {
-            Logger.Error(ex, "HTTP request failed for endpoint '{0}'", endpoint);
-        }
-        catch (JsonException ex)
-        {
-            Logger.Error(ex, "JSON deserialization failed for endpoint '{0}'", endpoint);
-        }
-        catch (Exception ex)
-        {
-            Logger.Error(ex, "Unexpected error in TryFetchData for endpoint '{0}'", endpoint);
-        }
-
-        result = null;
-        return false;
-    }
-
-    private double? ParseDouble(JsonElement data, string key)
-    {
-        if (data.TryGetProperty(key, out JsonElement value) && value.ValueKind == JsonValueKind.String)
-        {
-            if (double.TryParse(value.GetString(), out double result))
-            {
-                return result;
-            }
-        }
-        return null;
-    }
-
-    public async Task<IEnumerable<Price>> GetPricesAsync(string ticker, DateTime startDate, DateTime endDate)
-    {
-        var prices = new List<Price>();
-
-        try
-        {
-            var json = await FetchDataAsync($"query?function=TIME_SERIES_DAILY_ADJUSTED&symbol={ticker}&outputsize=full");
-
-            if (!json.HasValue)
-                return prices;
-
-            if (!json.Value.TryGetProperty("Time Series (Daily)", out var timeSeries))
-                return prices;
-
-            foreach (var item in timeSeries.EnumerateObject())
-            {
-                if (!DateTime.TryParse(item.Name, out var date))
-                    continue;
-
-                if (date < startDate || date > endDate)
-                    continue;
-
-                var dailyData = item.Value;
-
-                var price = new Price
+                result.Add(new Price
                 {
-                    Time = date.ToString("yyyy-MM-dd"),
-                    Open = ParseDecimal(dailyData, "1. open"),
-                    High = ParseDecimal(dailyData, "2. high"),
-                    Low = ParseDecimal(dailyData, "3. low"),
-                    Close = ParseDecimal(dailyData, "4. close"),
-                    Volume = ParseInt(dailyData, "6. volume")
-                };
-
-                prices.Add(price);
+                    Date = date,
+                    Open = decimal.Parse(data["1. open"]),
+                    High = decimal.Parse(data["2. high"]),
+                    Low = decimal.Parse(data["3. low"]),
+                    Close = decimal.Parse(data["4. close"]),
+                    Volume = decimal.Parse(data["6. volume"])
+                });
             }
 
-            // Order ascending by date (optional)
-            return prices.OrderBy(p => p.Time).ToList();
-        }
-        catch (Exception ex)
-        {
-            Logger.Error($"Error fetching prices for {ticker}: {ex.Message}");
-            return prices;
-        }
-    }
+            return result.OrderBy(p => p.Date).ToList();
+        });
 
-    private decimal ParseDecimal(JsonElement element, string key)
-    {
-        return element.TryGetProperty(key, out var prop) && decimal.TryParse(prop.GetString(), out var value)
-            ? value
-            : 0m;
-    }
-
-    private int ParseInt(JsonElement element, string key)
-    {
-        return element.TryGetProperty(key, out var prop) && int.TryParse(prop.GetString(), out var value)
-            ? value
-            : 0;
+        return prices ?? Enumerable.Empty<Price>();
     }
 
     public bool TryGetFinancialMetricsAsync(string ticker, DateTime endDate, string period, int limit, out IList<FinancialMetrics> metrics)
@@ -151,38 +56,23 @@ public class AlphaVantageDataReader : Contracts.IDataReader
 
         try
         {
-            // Fetch CompanyOverview
-            CompanyOverview? overviewData = default;
-            if (TryFetchData<CompanyOverviewRaw>($"query?function=OVERVIEW&symbol={ticker}",
-                    out var companyOverviewRaw))
-                overviewData = CompanyOverviewMapper.Map(companyOverviewRaw);
+            var overviewData = _dataFetcher.LoadOrFetch<CompanyOverviewRaw, CompanyOverview>($"OVERVIEW:{ticker}",
+                $"query?function=OVERVIEW&symbol={ticker}", CompanyOverviewMapper.Map);
 
-            // Fetch BalanceSheet
-            BalanceSheet? balanceSheetData = default;
-            if (TryFetchData<BalanceSheetRaw>($"query?function=BALANCE_SHEET&symbol={ticker}",
-                    out var balanceSheetRaw))
-                balanceSheetData = BalanceSheetMapper.Map(balanceSheetRaw);
+            var balanceSheetData = _dataFetcher.LoadOrFetch<BalanceSheetRaw, BalanceSheet>($"BALANCE_SHEET:{ticker}",
+                $"query?function=BALANCE_SHEET&symbol={ticker}", BalanceSheetMapper.Map);
 
-            // Fetch IncomeStatement
-            IncomeStatement? incomeStatementData = default;
-            if (TryFetchData<IncomeStatementRaw>($"query?function=BALANCE_SHEET&symbol={ticker}",
-                    out var incomeStatementRaw))
-                incomeStatementData = IncomeStatementMapper.Map(incomeStatementRaw);
+            var incomeStatementData = _dataFetcher.LoadOrFetch<IncomeStatementRaw, IncomeStatement>($"INCOME_STATEMENT:{ticker}",
+                $"query?function=INCOME_STATEMENT&symbol={ticker}", IncomeStatementMapper.Map);
 
-            // Fetch IncomeStatement
-            CashFlow? cashFlowData = default;
-            if (TryFetchData<CashFlowRaw>($"query?function=BALANCE_SHEET&symbol={ticker}",
-                    out var cashFlowRaw))
-                cashFlowData = CashFlowMapper.Map(cashFlowRaw);
+            var cashFlowData = _dataFetcher.LoadOrFetch<CashFlowRaw, CashFlow>($"CASH_FLOW:{ticker}",
+                $"query?function=CASH_FLOW&symbol={ticker}", CashFlowMapper.Map);
 
-            // Fetch IncomeStatement
-            Earnings? earningsData = default;
-            if (TryFetchData<EarningsRaw>($"query?function=BALANCE_SHEET&symbol={ticker}",
-                    out var earninFlowRaw))
-                earningsData = EarningsMapper.Map(earninFlowRaw);
-
+            var earningsData = _dataFetcher.LoadOrFetch<EarningsRaw, Earnings>($"EARNINGS:{ticker}",
+                $"query?function=EARNINGS&symbol={ticker}", EarningsMapper.Map);
+            
             var balanceReports = GetFilteredReports(balanceSheetData.QuarterlyReports, endDate, limit, r => r.FiscalDateEnding);
-            var incomeReports = GetFilteredReports(incomeStatementData.AnnualReports, endDate, 2, r => r.FiscalDateEnding);
+            var incomeReports = GetFilteredReports(incomeStatementData.QuarterlyReports, endDate, 2, r => r.FiscalDateEnding);
             var cashFlowReports = GetFilteredReports(cashFlowData.QuarterlyReports, endDate, limit, r => r.FiscalDateEnding);
             var earningsReports = GetFilteredReports(earningsData.QuarterlyEarnings, endDate, limit, r => r.FiscalDateEnding);
 
@@ -220,8 +110,17 @@ public class AlphaVantageDataReader : Contracts.IDataReader
                 {
                     var cf = cashFlowReports[i];
                     var sharesOutstanding = balanceReports[i].CommonStockSharesOutstanding;
-                    tmpMetrics.FreeCashFlowPerShare = cf.OperatingCashFlow / sharesOutstanding;
-                    tmpMetrics.PayoutRatio = cf.DividendPayout / cf.NetIncome;
+                    tmpMetrics.FreeCashFlowPerShare = cf.OperatingCashflow / sharesOutstanding;
+                    decimal? payoutRatio;
+                    if (i < incomeReports.Count)
+                    {
+                        var inc = incomeReports[i];
+                        payoutRatio = CalculatePayoutRatio(cf, inc);
+                    }
+                    else
+                        payoutRatio = CalculatePayoutRatio(cf, null);
+
+                    tmpMetrics.PayoutRatio = payoutRatio;
                 }
 
                 if (i < earningsReports.Count)
@@ -242,13 +141,27 @@ public class AlphaVantageDataReader : Contracts.IDataReader
         return true;
     }
 
-    public bool TryGetFinancialLineItemsAsync(string ticker, string[] lineItems, DateTime endDate, string period, int limit,
-        out IList<FinancialLineItem> financialLineItems)
+    public static decimal? CalculatePayoutRatio(
+        CashFlowReport? cashFlow,
+        IncomeStatementReport? incomeStatement)
+    {
+        if (cashFlow?.DividendPayout.HasValue == true &&
+            incomeStatement?.NetIncome.HasValue == true &&
+            incomeStatement.NetIncome != 0)
+        {
+            return cashFlow.DividendPayout.Value / incomeStatement.NetIncome.Value;
+        }
+
+        return null;
+    }
+
+
+    public bool TryGetFinancialLineItemsAsync(string ticker, DateTime endDate, string period, int limit, out IList<FinancialLineItem> financialLineItems)
     {
         financialLineItems = new List<FinancialLineItem>();
         try
         {
-            financialLineItems = SearchLineItemsAsync(ticker, lineItems, endDate, period, limit).Result.ToList();
+            financialLineItems = SearchLineItemsAsync(ticker, endDate, period, limit).Result.ToList();
             return true;
         }
         catch
@@ -270,44 +183,32 @@ public class AlphaVantageDataReader : Contracts.IDataReader
             .ToList();
     }
 
-    private List<JsonElement> GetFilteredReports(JsonElement? data, string key, DateTime endDate, int limit)
-    {
-        var reports = new List<JsonElement>();
-
-        if (data.HasValue && data.Value.TryGetProperty(key, out JsonElement array))
-        {
-            reports = array.EnumerateArray()
-                .Where(e => DateTime.TryParse(e.GetProperty("fiscalDateEnding").GetString(), out var date) && date <= endDate)
-                .OrderByDescending(e => DateTime.Parse(e.GetProperty("fiscalDateEnding").GetString()))
-                .Take(limit)
-                .ToList();
-        }
-
-        return reports;
-    }
-
-    private async Task<IEnumerable<FinancialLineItem>> SearchLineItemsAsync(string ticker, string[] lineItems, DateTime endDate, string period = "ttm", int limit = 10)
+    private async Task<IEnumerable<FinancialLineItem>> SearchLineItemsAsync(string ticker, DateTime endDate,string period = "ttm",int limit = 10)
     {
         var result = new List<FinancialLineItem>();
 
-        // Load data from Alpha Vantage
-        var balanceSheetData = await FetchDataAsync($"query?function=BALANCE_SHEET&symbol={ticker}");
-        var incomeStatementData = await FetchDataAsync($"query?function=INCOME_STATEMENT&symbol={ticker}");
-        var cashFlowData = await FetchDataAsync($"query?function=CASH_FLOW&symbol={ticker}");
+        var balanceSheetData = _dataFetcher.LoadOrFetch<BalanceSheetRaw, BalanceSheet>($"BALANCE_SHEET:{ticker}",
+            $"query?function=BALANCE_SHEET&symbol={ticker}", BalanceSheetMapper.Map);
 
-        // Collect reports by period (e.g., annualReports or quarterlyReports)
-        var balanceReports = GetFilteredReports(balanceSheetData, GetPeriodKey(period), endDate, limit);
-        var incomeReports = GetFilteredReports(incomeStatementData, GetPeriodKey(period), endDate, limit);
-        var cashFlowReports = GetFilteredReports(cashFlowData, GetPeriodKey(period), endDate, limit);
+        var incomeStatementData = _dataFetcher.LoadOrFetch<IncomeStatementRaw, IncomeStatement>($"INCOME_STATEMENT:{ticker}",
+            $"query?function=INCOME_STATEMENT&symbol={ticker}", IncomeStatementMapper.Map);
 
-        // Merge reports by fiscal date
+        var cashFlowData = _dataFetcher.LoadOrFetch<CashFlowRaw, CashFlow>($"CASH_FLOW:{ticker}",
+            $"query?function=CASH_FLOW&symbol={ticker}", CashFlowMapper.Map);
+
+        var balanceReports = GetFilteredReports(balanceSheetData.QuarterlyReports, endDate, limit, r => r.FiscalDateEnding);
+        var incomeReports = GetFilteredReports(incomeStatementData.QuarterlyReports, endDate, 2, r => r.FiscalDateEnding);
+        var cashFlowReports = GetFilteredReports(cashFlowData.QuarterlyReports, endDate, limit, r => r.FiscalDateEnding);
+
         var allReports = MergeReportsByDate(balanceReports, incomeReports, cashFlowReports);
 
         foreach (var (fiscalDate, reportData) in allReports)
         {
             var extras = new Dictionary<string, dynamic>(StringComparer.OrdinalIgnoreCase);
 
-            foreach (var item in lineItems)
+            var keysToUse = reportData.Keys.ToArray(); // all keys in the merged report
+
+            foreach (var item in keysToUse)
             {
                 if (reportData.TryGetValue(item, out var value))
                     extras[item] = value;
@@ -319,7 +220,7 @@ public class AlphaVantageDataReader : Contracts.IDataReader
                 ticker: ticker,
                 reportPeriod: fiscalDate.ToString("yyyy-MM-dd"),
                 period: period,
-                currency: "USD", // Alpha Vantage reports are usually in USD
+                currency: "USD",
                 extras: extras
             ));
         }
@@ -327,50 +228,36 @@ public class AlphaVantageDataReader : Contracts.IDataReader
         return result;
     }
 
-    private static string GetPeriodKey(string period) => period.Equals("quarterly", StringComparison.OrdinalIgnoreCase) ? "quarterlyReports" : "annualReports";
-
-    private Dictionary<DateTime, Dictionary<string, dynamic>> MergeReportsByDate(
-        List<JsonElement> balance,
-        List<JsonElement> income,
-        List<JsonElement> cashflow)
+    private static Dictionary<DateTime, Dictionary<string, decimal?>> MergeReportsByDate(
+        IEnumerable<BalanceSheetReport> balanceReports, IEnumerable<IncomeStatementReport> incomeReports,
+        IEnumerable<CashFlowReport> cashFlowReports)
     {
-        var merged = new Dictionary<DateTime, Dictionary<string, dynamic>>();
+        var merged = new Dictionary<DateTime, Dictionary<string, decimal?>>();
 
-        void AddToMerged(List<JsonElement> source)
+        void Merge<T>(IEnumerable<T> reports, Func<T, DateTime> getDate, Func<T, Dictionary<string, decimal?>> getItems)
         {
-            foreach (var report in source)
+            foreach (var report in reports)
             {
-                if (!DateTime.TryParse(report.GetProperty("fiscalDateEnding").GetString(), out var date))
-                    continue;
+                var date = getDate(report);
 
-                if (!merged.TryGetValue(date, out var dict))
+                if (!merged.TryGetValue(date, out var combined))
                 {
-                    dict = new Dictionary<string, dynamic>(StringComparer.OrdinalIgnoreCase);
-                    merged[date] = dict;
+                    combined = new Dictionary<string, decimal?>(StringComparer.OrdinalIgnoreCase);
+                    merged[date] = combined;
                 }
 
-                foreach (var prop in report.EnumerateObject())
+                foreach (var kvp in getItems(report))
                 {
-                    if (!dict.ContainsKey(prop.Name))
-                        dict[prop.Name] = ParseNullableDouble(prop.Value);
+                    combined[kvp.Key] = kvp.Value;
                 }
             }
         }
 
-        AddToMerged(balance);
-        AddToMerged(income);
-        AddToMerged(cashflow);
+        Merge(balanceReports, r => r.FiscalDateEnding, r => r.GetLineItems());
+        Merge(incomeReports, r => r.FiscalDateEnding, r => r.GetLineItems());
+        Merge(cashFlowReports, r => r.FiscalDateEnding, r => r.GetLineItems());
 
         return merged;
-    }
-
-    private double? ParseNullableDouble(JsonElement element)
-    {
-        if (element.ValueKind == JsonValueKind.String && double.TryParse(element.GetString(), out var val))
-            return val;
-        if (element.ValueKind == JsonValueKind.Number && element.TryGetDouble(out var val2))
-            return val2;
-        return null;
     }
 
     public IEnumerable<InsiderTrade> GetInsiderTrades(string ticker, DateTime endDate, DateTime? startDate = null, int limit = 1000)
@@ -398,14 +285,18 @@ public class AlphaVantageDataReader : Contracts.IDataReader
         table.Columns.Add("Close", typeof(decimal));
         table.Columns.Add("High", typeof(decimal));
         table.Columns.Add("Low", typeof(decimal));
-        table.Columns.Add("Volume", typeof(int));
+        table.Columns.Add("Volume", typeof(decimal)); // changed from int to decimal
 
         foreach (var price in prices)
         {
-            if (DateTime.TryParse(price.Time, null, DateTimeStyles.AdjustToUniversal, out DateTime parsedDate))
-            {
-                table.Rows.Add(parsedDate, price.Open, price.Close, price.High, price.Low, price.Volume);
-            }
+            table.Rows.Add(
+                price.Date,
+                price.Open,
+                price.Close,
+                price.High,
+                price.Low,
+                price.Volume
+            );
         }
 
         // Sort by Date (ascending)
@@ -419,7 +310,7 @@ public class AlphaVantageDataReader : Contracts.IDataReader
 
     public DataTable GetPriceData(string ticker, DateTime startDate, DateTime endDate)
     {
-        var prices = GetPricesAsync(ticker, startDate, endDate).Result;
+        var prices = GetPrices(ticker, startDate, endDate);
         return PricesToDf(prices);
     }
 }

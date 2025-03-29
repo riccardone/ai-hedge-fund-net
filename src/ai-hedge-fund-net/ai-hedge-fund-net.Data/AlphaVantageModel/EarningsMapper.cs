@@ -7,45 +7,35 @@ public static class EarningsMapper
         return new Earnings
         {
             Symbol = raw.Symbol,
-            AnnualEarnings = raw.AnnualEarnings?.Select(MapAnnualReport).ToList(),
-            QuarterlyEarnings = raw.QuarterlyEarnings?.Select(MapQuarterlyReport).ToList()
+            AnnualEarnings = raw.AnnualEarnings?.Select(MapAnnual).ToList() ?? new(),
+            QuarterlyEarnings = raw.QuarterlyEarnings?.Select(MapQuarterly).ToList() ?? new()
         };
     }
 
-    private static EarningsReport MapAnnualReport(Dictionary<string, string> raw)
+    private static AnnualEarning MapAnnual(AnnualEarningRaw raw)
     {
-        return new EarningsReport
+        return new AnnualEarning
         {
-            FiscalDateEnding = ParseDate(raw.GetValueOrDefault("fiscalDateEnding")),
-            ReportedEPS = ParseNullableDecimal(raw.GetValueOrDefault("reportedEPS"))
+            FiscalDateEnding = DateTime.TryParse(raw.FiscalDateEnding, out var date) ? date : default,
+            ReportedEPS = ParseDecimal(raw.ReportedEPS)
         };
     }
 
-    private static EarningsReport MapQuarterlyReport(Dictionary<string, string> raw)
+    private static QuarterlyEarning MapQuarterly(QuarterlyEarningRaw raw)
     {
-        return new EarningsReport
+        return new QuarterlyEarning
         {
-            FiscalDateEnding = ParseDate(raw.GetValueOrDefault("fiscalDateEnding")),
-            ReportedDate = ParseNullableDate(raw.GetValueOrDefault("reportedDate")),
-            ReportedEPS = ParseNullableDecimal(raw.GetValueOrDefault("reportedEPS")),
-            EstimatedEPS = ParseNullableDecimal(raw.GetValueOrDefault("estimatedEPS")),
-            Surprise = ParseNullableDecimal(raw.GetValueOrDefault("surprise")),
-            SurprisePercentage = ParseNullableDecimal(raw.GetValueOrDefault("surprisePercentage"))
+            FiscalDateEnding = DateTime.TryParse(raw.FiscalDateEnding, out var fde) ? fde : default,
+            ReportedDate = DateTime.TryParse(raw.ReportedDate, out var rd) ? rd : default,
+            ReportedEPS = ParseDecimal(raw.ReportedEPS),
+            EstimatedEPS = ParseDecimal(raw.EstimatedEPS),
+            Surprise = ParseDecimal(raw.Surprise),
+            SurprisePercentage = ParseDecimal(raw.SurprisePercentage)
         };
     }
 
-    private static decimal? ParseNullableDecimal(string value)
+    private static decimal ParseDecimal(string value)
     {
-        return decimal.TryParse(value, out var result) ? result : (decimal?)null;
-    }
-
-    private static DateTime ParseDate(string value)
-    {
-        return DateTime.TryParse(value, out var date) ? date : default;
-    }
-
-    private static DateTime? ParseNullableDate(string value)
-    {
-        return DateTime.TryParse(value, out var date) ? (DateTime?)date : null;
+        return decimal.TryParse(value, out var result) ? result : 0;
     }
 }
