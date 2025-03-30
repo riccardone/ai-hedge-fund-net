@@ -20,9 +20,9 @@ public class RiskManagementStep : StepBody
         var agent = new RiskManagementAgent(workflowState, dataReader);
 
         Logger.Info("[RiskManagementStep] Starting risk analysis...");
-        var signals = agent.AnalyzeRisk();
+        var signals = agent.Analyze(); //.AnalyzeRisk();
 
-        workflowState.AnalystSignals["risk_management_agent"] = signals;
+        workflowState.AnalystSignals["risk_management_agent"] = signals.ToDictionary(kvp => kvp.Key, kvp => (object)kvp.Value); 
 
         foreach (var (ticker, signal) in signals)
         {

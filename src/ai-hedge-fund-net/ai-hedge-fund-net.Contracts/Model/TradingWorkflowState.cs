@@ -12,18 +12,18 @@ public class TradingWorkflowState
     public List<string> SelectedAnalysts { get; set; } = new();
     public string ModelName { get; set; } = "gpt-4o";
     public string ModelProvider { get; set; } = "OpenAI";
-    public double InitialCash { get; set; } = 100000.0;
-    public double MarginRequirement { get; set; } = 0.0;
+    public decimal InitialCash { get; set; } = 100000.0m;
+    public decimal MarginRequirement { get; set; } = 0.0m;
 
     public Portfolio Portfolio { get; set; } = new();
-    public Dictionary<string, IDictionary<string, TradeSignal>> AnalystSignals { get; set; }
+    public Dictionary<string, IDictionary<string, object>> AnalystSignals { get; set; }
     public Dictionary<string, TradeDecision> TradeDecisions { get; set; }
 }
 
 public class Portfolio
 {
-    public double Cash { get; set; } = 100000.0;
-    public double MarginRequirement { get; set; } = 0.0;
+    public decimal Cash { get; set; } = 100000.0m;
+    public decimal MarginRequirement { get; set; } = 0.0m;
     public Dictionary<string, Position> Positions { get; set; } = new();
     public Dictionary<string, RealizedGains> RealizedGains { get; set; } = new();
 
@@ -38,12 +38,12 @@ public class Position
 {
     public int Long { get; set; } = 0;
     public int Short { get; set; } = 0;
-    public double LongCostBasis { get; set; } = 0.0;
-    public double ShortCostBasis { get; set; } = 0.0;
+    public decimal LongCostBasis { get; set; } = 0.0m;
+    public decimal ShortCostBasis { get; set; } = 0.0m;
 }
 
 public class RealizedGains
 {
-    public double Long { get; set; } = 0.0;
-    public double Short { get; set; } = 0.0;
+    public decimal Long { get; set; } = 0.0m;
+    public decimal Short { get; set; } = 0.0m;
 }

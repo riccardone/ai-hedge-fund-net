@@ -43,7 +43,7 @@ public class AnalyzeFinancialMetricsStep : StepBody
                     Logger.Info($"{analyst} {tradeSignal.Ticker} analysis completed with signal: {tradeSignal.Signal} {tradeSignal.Reasoning}");
                     if (!state.AnalystSignals.TryGetValue(analyst, out var signals))
                     {
-                        signals = new Dictionary<string, TradeSignal>();
+                        signals = new Dictionary<string, object>();
                         state.AnalystSignals[analyst] = signals;
                     }
 
