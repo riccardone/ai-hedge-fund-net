@@ -16,7 +16,7 @@ public class TradingWorkflowState
     public double MarginRequirement { get; set; } = 0.0;
 
     public Portfolio Portfolio { get; set; } = new();
-    public Dictionary<string, object> AnalystSignals { get; set; }
+    public Dictionary<string, IDictionary<string, TradeSignal>> AnalystSignals { get; set; }
     public Dictionary<string, TradeDecision> TradeDecisions { get; set; }
 }
 

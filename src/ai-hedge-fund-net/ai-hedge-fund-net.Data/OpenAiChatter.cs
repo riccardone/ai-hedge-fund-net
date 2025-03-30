@@ -3,13 +3,13 @@ using ai_hedge_fund_net.Contracts;
 
 namespace ai_hedge_fund_net.Data;
 
-public class HttpAiChatter : IChatter
+public class OpenAiChatter : IChatter
 {
     private readonly HttpClient _client;
 
-    public HttpAiChatter(HttpClient client)
+    public OpenAiChatter(IHttpClientFactory clientFactory)
     {
-        _client = client;
+        _client = clientFactory.CreateClient("OpenAI");
     }
 
     public bool TryPost(string path, string payload, out string response)
