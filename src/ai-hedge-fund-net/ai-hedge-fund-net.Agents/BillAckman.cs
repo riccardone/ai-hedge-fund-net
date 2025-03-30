@@ -5,24 +5,23 @@ namespace ai_hedge_fund_net.Agents;
 
 public class BillAckman : ITradingAgent
 {
-    public string Name => nameof(BillAckman);
-
-    public IDictionary<string, IDictionary<string, IEnumerable<string>>> AnalyzeEarningsStability()
+    public string Name { get; }
+    public FinancialAnalysisResult AnalyzeEarningsStability(string ticker)
     {
         throw new NotImplementedException();
     }
 
-    public IDictionary<string, FinancialStrength> AnalyzeFinancialStrength()
+    public FinancialAnalysisResult AnalyzeFinancialStrength(string ticker)
     {
         throw new NotImplementedException();
     }
 
-    public IDictionary<string, IEnumerable<string>> AnalyzeValuation()
+    public FinancialAnalysisResult AnalyzeValuation(string ticker)
     {
         throw new NotImplementedException();
     }
 
-    public TradeSignal GenerateOutput()
+    public TradeSignal GenerateOutput(string ticker)
     {
         throw new NotImplementedException();
     }

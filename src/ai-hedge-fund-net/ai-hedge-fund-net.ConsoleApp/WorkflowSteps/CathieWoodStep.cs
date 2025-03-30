@@ -24,16 +24,16 @@ namespace ai_hedge_fund_net.ConsoleApp.WorkflowSteps
             var financialLineItems = workflowState.FinancialLineItems;
 
             // Call Ben Graham's analysis methods
-            var earningsStability = tradingAgent.AnalyzeEarningsStability();
-            var financialStrength = tradingAgent.AnalyzeFinancialStrength();
-            var valuation = tradingAgent.AnalyzeValuation();
+            //var earningsStability = tradingAgent.AnalyzeEarningsStability();
+            //var financialStrength = tradingAgent.AnalyzeFinancialStrength();
+            //var valuation = tradingAgent.AnalyzeValuation();
 
-            // Log analysis results
-            Logger.Info($"Earnings Stability: {string.Join(", ", earningsStability["Details"])}");
-            Logger.Info($"Financial Strength: {string.Join(", ", financialStrength["Details"])}");
-            Logger.Info($"Valuation: {string.Join(", ", valuation["Details"])}");
+            //// Log analysis results
+            //Logger.Info($"Earnings Stability: {string.Join(", ", earningsStability["Details"])}");
+            //Logger.Info($"Financial Strength: {string.Join(", ", financialStrength["Details"])}");
+            //Logger.Info($"Valuation: {string.Join(", ", valuation["Details"])}");
 
-            ExecutionResult.Outcome(tradingAgent.GenerateOutput());
+            //ExecutionResult.Outcome(tradingAgent.GenerateOutput());
 
             return ExecutionResult.Next();
         }

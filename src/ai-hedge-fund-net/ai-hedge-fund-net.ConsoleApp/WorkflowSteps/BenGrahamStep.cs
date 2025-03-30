@@ -27,19 +27,32 @@ public class BenGrahamStep : StepBody
         Logger.Info($"[{tradingAgent.Name}] Analyzing fundamental investment signals...");
 
         // Call Ben Graham's analysis methods
-        var earningsStability = tradingAgent.AnalyzeEarningsStability();
-        var financialStrength = tradingAgent.AnalyzeFinancialStrength();
-        var valuation = tradingAgent.AnalyzeValuation();
+
+        var earningsStability = new Dictionary<string, FinancialAnalysisResult>();
+        var financialStrength = new Dictionary<string, FinancialAnalysisResult>();
+        var valuation = new Dictionary<string, FinancialAnalysisResult>();
+
+        foreach (var ticker in workflowState.Tickers)
+        {
+            earningsStability.Add(ticker, tradingAgent.AnalyzeEarningsStability(ticker));
+            financialStrength.Add(ticker, tradingAgent.AnalyzeFinancialStrength(ticker));
+            valuation.Add(ticker, tradingAgent.AnalyzeValuation(ticker));
+        }
 
         // Log analysis results
         foreach (var ticker in workflowState.Tickers)
         {
-            Logger.Info($"Earnings Stability: {string.Join(", ", earningsStability[ticker]["Details"])}");
+            Logger.Info($"{ticker} Earnings Stability: Score {earningsStability[ticker].Score} {string.Join(", ", earningsStability[ticker].Details)}");
             if (financialStrength.TryGetValue(ticker, out var value))
-                Logger.Info($"Financial Strength: {string.Join(", ", value.Details)}");
-            Logger.Info($"Valuation: {string.Join(", ", valuation["Details"])}");
+                Logger.Info($"{ticker} Financial Strength: Score {value.Score}, {string.Join(", ", value.Details)}");
+            Logger.Info($"{ticker} Valuation: Score {valuation[ticker].Score} {string.Join(", ", valuation[ticker].Details)}");
         }
 
-        return ExecutionResult.Outcome(tradingAgent.GenerateOutput());
+        foreach (var ticker in workflowState.Tickers)
+        {
+            tradingAgent.GenerateOutput(ticker);
+        }
+        return ExecutionResult.Next();
+        //return ExecutionResult.Outcome(tradingAgent.GenerateOutput());
     }
 }
