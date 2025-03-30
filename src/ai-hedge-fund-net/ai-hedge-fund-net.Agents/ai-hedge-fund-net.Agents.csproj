@@ -8,6 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="nlog" Version="5.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\ai-hedge-fund-net.Contracts\ai-hedge-fund-net.Contracts.csproj" />
   </ItemGroup>
 

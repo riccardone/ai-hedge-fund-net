@@ -9,6 +9,10 @@ using System.Net.Http.Headers;
 using ai_hedge_fund_net.Contracts;
 using ai_hedge_fund_net.Data;
 using WorkflowCore.Interface;
+using ai_hedge_fund_net.Data.AlphaVantage;
+using ai_hedge_fund_net.Data.Finnhub;
+using ai_hedge_fund_net.Data.TwelveData;
+using ai_hedge_fund_net.Data.Mock;
 
 namespace ai_hedge_fund_net.ConsoleApp;
 
@@ -21,7 +25,7 @@ public class Program
         var initialCash = ParseDoubleArgument(args, "--initial-cash", 100000.0);
         var marginRequirement = ParseDoubleArgument(args, "--margin-requirement", 0.0);
 
-        var tickers = ParseArgument(args, "--tickers")?.Split(',') ?? new string[] { "MSFT", "AAPL" };
+        var tickers = ParseArgument(args, "--tickers")?.Split(',') ?? new string[] { "MSFT" }; //, "AAPL" };
 
         var endDate = ParseArgument(args, "--end-date") ?? DateTime.UtcNow.ToString("yyyy-MM-dd");
         var startDate = ParseArgument(args, "--start-date") ?? DateTime.UtcNow.AddMonths(-3).ToString("yyyy-MM-dd");
@@ -63,6 +67,7 @@ public class Program
 
         var configuration = BuildConfig();
         services.AddSingleton<IConfiguration>(configuration);
+        services.AddSingleton<IPriceVolumeProvider, FakePriceVolumeProvider>();
         services.AddSingleton<IDataReader, AlphaVantageDataReader>();
         services.AddSingleton<IDataFetcher, DataFetcher>();
         services.AddSingleton<IDataManager, FileDataManager>();
@@ -74,7 +79,7 @@ public class Program
             if (string.IsNullOrEmpty(apiKey))
                 throw new InvalidOperationException("AlphaVantage API key is missing in configuration.");
             client.BaseAddress = new Uri("https://www.alphavantage.co");
-        }).AddHttpMessageHandler(() => new AlphaVantageAuthHandler(configuration["AlphaVantage:ApiKey"])); ;
+        }).AddHttpMessageHandler(() => new AlphaVantageAuthHandler(configuration["AlphaVantage:ApiKey"])); 
         services.AddHttpClient("OpenAI", client =>
         {
             var apiKey = configuration["OpenAI:ApiKey"];

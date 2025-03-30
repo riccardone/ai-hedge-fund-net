@@ -2,25 +2,27 @@
 using System.Globalization;
 using ai_hedge_fund_net.Contracts;
 using ai_hedge_fund_net.Contracts.Model;
-using ai_hedge_fund_net.Data.AlphaVantageModel;
 using NLog;
 
-namespace ai_hedge_fund_net.Data;
+namespace ai_hedge_fund_net.Data.AlphaVantage;
 
 public class AlphaVantageDataReader : Contracts.IDataReader
 {
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
     private readonly IDataFetcher _dataFetcher;
+    private readonly IPriceVolumeProvider _priceVolumeProvider;
 
-    public AlphaVantageDataReader(IDataFetcher dataFetcher)
+    public AlphaVantageDataReader(IDataFetcher dataFetcher, IPriceVolumeProvider priceVolumeProvider)
     {
         _dataFetcher = dataFetcher;
+        _priceVolumeProvider = priceVolumeProvider;
     }
 
     public IEnumerable<Price> GetPrices(string ticker, DateTime startDate, DateTime endDate)
     {
         var key = $"daily_{ticker}";
-        var query = $"query?function=TIME_SERIES_DAILY_ADJUSTED&symbol={ticker}&outputsize=full&apikey=demo";
+        //var query = $"query?function=TIME_SERIES_DAILY_ADJUSTED&symbol={ticker}&outputsize=full";
+        var query = $"query?function=TIME_SERIES_DAILY&symbol={ticker}&outputsize=compact";
 
         var prices = _dataFetcher.LoadOrFetch<TimeSeriesDailyResponse, List<Price>>(key, query, raw =>
         {
@@ -40,7 +42,9 @@ public class AlphaVantageDataReader : Contracts.IDataReader
                     High = decimal.Parse(data["2. high"]),
                     Low = decimal.Parse(data["3. low"]),
                     Close = decimal.Parse(data["4. close"]),
-                    Volume = decimal.Parse(data["6. volume"])
+                    Volume = data.TryGetValue("6. volume", out var volumeRaw) && decimal.TryParse(volumeRaw, out var volume)
+                        ? volume
+                        : _priceVolumeProvider.GetVolume(ticker, date) ?? 0
                 });
             }
 
