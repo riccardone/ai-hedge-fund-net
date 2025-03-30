@@ -51,7 +51,7 @@ public class InitializeTradingStateStep : StepBody
         };
 
         // Initialize empty analyst signals
-        state.AnalystSignals = new Dictionary<string, IDictionary<string, TradeSignal>>();
+        state.AnalystSignals = new Dictionary<string, IDictionary<string, object>>();
 
         // Initialize empty trade decisions
         state.TradeDecisions = new Dictionary<string, TradeDecision>();

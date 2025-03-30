@@ -10,8 +10,6 @@ using ai_hedge_fund_net.Contracts;
 using ai_hedge_fund_net.Data;
 using WorkflowCore.Interface;
 using ai_hedge_fund_net.Data.AlphaVantage;
-using ai_hedge_fund_net.Data.Finnhub;
-using ai_hedge_fund_net.Data.TwelveData;
 using ai_hedge_fund_net.Data.Mock;
 
 namespace ai_hedge_fund_net.ConsoleApp;
@@ -22,8 +20,8 @@ public class Program
 
     static async Task Main(string[] args)
     {
-        var initialCash = ParseDoubleArgument(args, "--initial-cash", 100000.0);
-        var marginRequirement = ParseDoubleArgument(args, "--margin-requirement", 0.0);
+        var initialCash = ParseDecimalArgument(args, "--initial-cash", 100000.0m);
+        var marginRequirement = ParseDecimalArgument(args, "--margin-requirement", 0.0m);
 
         var tickers = ParseArgument(args, "--tickers")?.Split(',') ?? new string[] { "MSFT" }; //, "AAPL" };
 
@@ -147,9 +145,9 @@ public class Program
         return (index >= 0 && index + 1 < args.Length) ? args[index + 1] : null;
     }
 
-    private static double ParseDoubleArgument(string[] args, string key, double defaultValue)
+    private static decimal ParseDecimalArgument(string[] args, string key, decimal defaultValue)
     {
         var argValue = ParseArgument(args, key);
-        return double.TryParse(argValue, out double result) ? result : defaultValue;
+        return decimal.TryParse(argValue, out decimal result) ? result : defaultValue;
     }
 }
