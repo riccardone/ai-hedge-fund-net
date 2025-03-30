@@ -16,187 +16,191 @@ public class BenGraham : ITradingAgent
         _chatter = chatter;
     }
 
-    public IDictionary<string, IDictionary<string, IEnumerable<string>>> AnalyzeEarningsStability()
+    public FinancialAnalysisResult AnalyzeEarningsStability(string ticker)
     {
         // Graham wants at least several years of consistently positive earnings(ideally 5 +).
         // We'll check:
         // 1.Number of years with positive EPS.
         // 2.Growth in EPS from first to last period.
 
-        var results = new Dictionary<string, IDictionary<string, IEnumerable<string>>>();
-        foreach (var ticker in _tradingWorkflowState.Tickers)
+        var results = new FinancialAnalysisResult();
+        results.SetScore(0);
+
+        var epsValues = _tradingWorkflowState.FinancialLineItems[ticker]
+            .Where(item => item.Extras.ContainsKey("EarningsPerShare"))
+            .Select(item => item.Extras["EarningsPerShare"])
+            .ToList();
+
+        if (epsValues.Count < 2)
         {
-            var details = new List<string>();
-            int score = 0;
+            results.AddDetail("Not enough multi-year EPS data.");
+            return results;
+        }
 
-            var epsValues = _tradingWorkflowState.FinancialLineItems[ticker]
-                .Where(item => item.Extras.ContainsKey("EarningsPerShare"))
-                .Select(item => item.Extras["EarningsPerShare"])
-                .ToList();
+        int positiveEpsYears = epsValues.Count(eps => eps > 0);
+        if (positiveEpsYears == epsValues.Count)
+        {
+            results.IncreaseScore(3);
+            results.AddDetail("EPS was positive in all available periods.");
+        }
+        else if (positiveEpsYears >= epsValues.Count * 0.8)
+        {
+            results.IncreaseScore(2);
+            results.AddDetail("EPS was positive in most periods.");
+        }
+        else
+        {
+            results.AddDetail("EPS was negative in multiple periods.");
+        }
 
-            if (epsValues.Count < 2)
-            {
-                details.Add("Not enough multi-year EPS data.");
-                results.Add(ticker, new Dictionary<string, IEnumerable<string>> { { "Score", new[] { score.ToString() } }, { "Details", details } });
-                continue;
-            }
-
-            int positiveEpsYears = epsValues.Count(eps => eps > 0);
-            if (positiveEpsYears == epsValues.Count)
-            {
-                score += 3;
-                details.Add("EPS was positive in all available periods.");
-            }
-            else if (positiveEpsYears >= epsValues.Count * 0.8)
-            {
-                score += 2;
-                details.Add("EPS was positive in most periods.");
-            }
-            else
-            {
-                details.Add("EPS was negative in multiple periods.");
-            }
-
-            if (epsValues.Last() > epsValues.First())
-            {
-                score += 1;
-                details.Add("EPS grew from earliest to latest period.");
-            }
-            else
-            {
-                details.Add("EPS did not grow from earliest to latest period.");
-            }
-            results.Add(ticker, new Dictionary<string, IEnumerable<string>> { { "Score", new[] { score.ToString() } }, { "Details", details } });
+        if (epsValues.Last() > epsValues.First())
+        {
+            results.IncreaseScore(1);
+            results.AddDetail("EPS grew from earliest to latest period.");
+        }
+        else
+        {
+            results.AddDetail("EPS did not grow from earliest to latest period.");
         }
 
         return results;
     }
 
-    public IDictionary<string, FinancialStrength> AnalyzeFinancialStrength()
+    public FinancialAnalysisResult AnalyzeFinancialStrength(string ticker)
     {
         // Graham checks liquidity(current ratio >= 2), manageable debt,
         // and dividend record(preferably some history of dividends).
 
-        var details = new List<string>();
-        int score = 0;
+        var results = new FinancialAnalysisResult();
+        results.SetScore(0);
 
-        var results = new Dictionary<string, FinancialStrength>();
-
-        foreach (var ticker in _tradingWorkflowState.Tickers)
+        if (!_tradingWorkflowState.FinancialLineItems.TryGetValue(ticker, out var items) ||
+            !TryGetLatestCompleteLineItem(items, out var latestItem))
         {
-            var latestItem = _tradingWorkflowState.FinancialLineItems[ticker].LastOrDefault();
-            if (latestItem == null)
+            results.AddDetail("No complete data for financial strength analysis");
+            return results;
+        }
+
+        var extras = latestItem.Extras;
+
+        decimal totalAssets = extras["TotalAssets"];
+        decimal totalLiabilities = extras["TotalLiabilities"];
+        decimal currentAssets = extras["TotalCurrentAssets"];
+        decimal currentLiabilities = extras["TotalCurrentLiabilities"];
+
+        if (currentLiabilities > 0)
+        {
+            var currentRatio = currentAssets / currentLiabilities;
+            if (currentRatio >= 2.0m)
             {
-                details.Add("No data for financial strength analysis");
-                return new Dictionary<string, FinancialStrength>
-                {
-                    { ticker, new FinancialStrength(score, details) }
-                };
+                results.IncreaseScore(2);
+                results.AddDetail($"Current ratio = {currentRatio:F2} (>=2.0: solid).");
             }
-
-            decimal totalAssets = latestItem.Extras["TotalAssets"] ?? 0;
-            decimal totalLiabilities = latestItem.Extras["TotalLiabilities"] ?? 0;
-            decimal currentAssets = latestItem.Extras["CurrentAssets"] ?? 0;
-            decimal currentLiabilities = latestItem.Extras["CurrentLiabilities"] ?? 0;
-
-            if (currentLiabilities > 0)
+            else if (currentRatio >= 1.5m)
             {
-                decimal currentRatio = currentAssets / currentLiabilities;
-                if (currentRatio >= 2.0m)
-                {
-                    score += 2;
-                    details.Add($"Current ratio = {currentRatio:F2} (>=2.0: solid).");
-                }
-                else if (currentRatio >= 1.5m)
-                {
-                    score += 1;
-                    details.Add($"Current ratio = {currentRatio:F2} (moderately strong).");
-                }
-                else
-                {
-                    details.Add($"Current ratio = {currentRatio:F2} (<1.5: weaker liquidity).");
-                }
+                results.IncreaseScore(1);
+                results.AddDetail($"Current ratio = {currentRatio:F2} (moderately strong).");
             }
             else
             {
-                details.Add("Cannot compute current ratio (missing or zero current liabilities). ");
+                results.AddDetail($"Current ratio = {currentRatio:F2} (<1.5: weaker liquidity).");
             }
+        }
+        else
+        {
+            results.AddDetail("Cannot compute current ratio (missing or zero current liabilities). ");
+        }
 
-            if (totalAssets > 0)
+        if (totalAssets > 0)
+        {
+            decimal debtRatio = totalLiabilities / totalAssets;
+            if (debtRatio < 0.5m)
             {
-                decimal debtRatio = totalLiabilities / totalAssets;
-                if (debtRatio < 0.5m)
-                {
-                    score += 2;
-                    details.Add($"Debt ratio = {debtRatio:F2}, under 0.50 (conservative).");
-                }
-                else if (debtRatio < 0.8m)
-                {
-                    score += 1;
-                    details.Add($"Debt ratio = {debtRatio:F2}, somewhat high but could be acceptable.");
-                }
-                else
-                {
-                    details.Add($"Debt ratio = {debtRatio:F2}, quite high by Graham standards.");
-                }
+                results.IncreaseScore(2);
+                results.AddDetail($"Debt ratio = {debtRatio:F2}, under 0.50 (conservative).");
+            }
+            else if (debtRatio < 0.8m)
+            {
+                results.IncreaseScore(1);
+                results.AddDetail($"Debt ratio = {debtRatio:F2}, somewhat high but could be acceptable.");
             }
             else
             {
-                details.Add("Cannot compute debt ratio (missing total assets).");
+                results.AddDetail($"Debt ratio = {debtRatio:F2}, quite high by Graham standards.");
             }
-
-            results.Add(ticker, new FinancialStrength(score, details));
+        }
+        else
+        {
+            results.AddDetail("Cannot compute debt ratio (missing total assets).");
         }
 
         return results;
     }
 
-    public IDictionary<string, IEnumerable<string>> AnalyzeValuation()
+    private static bool TryGetLatestCompleteLineItem(IEnumerable<FinancialLineItem> items, out FinancialLineItem? completeItem)
+    {
+        foreach (var item in items.Reverse())
+        {
+            var extras = item.Extras;
+            if (extras.ContainsKey("TotalAssets") &&
+                extras.ContainsKey("TotalLiabilities"))
+            {
+                completeItem = item;
+                return true;
+            }
+        }
+
+        completeItem = null;
+        return false;
+    }
+
+    public FinancialAnalysisResult AnalyzeValuation(string ticker)
     {
         // Core Graham approach to valuation:
         // 1.Net - Net Check: (Current Assets - Total Liabilities) vs.Market Cap
         // 2.Graham Number: sqrt(22.5 * EPS * Book Value per Share)
         // 3.Compare per - share price to Graham Number => margin of safety
 
-        var details = new List<string>();
-        int score = 0;
-        foreach (var ticker in _tradingWorkflowState.Tickers)
+        var results = new FinancialAnalysisResult();
+        results.SetScore(0);
+
+        if (!_tradingWorkflowState.FinancialLineItems.TryGetValue(ticker, out var items) ||
+            !TryGetLatestCompleteLineItem(items, out var latest))
         {
-            // TODO check if taking the last financialmetrics.marketcap is correct or we should get it differently
-            var latest = _tradingWorkflowState.FinancialLineItems[ticker].LastOrDefault();
-            if (latest == null || _tradingWorkflowState.FinancialMetrics[ticker].Last().MarketCap <= 0)
-            {
-                details.Add("Insufficient data to perform valuation.");
-                return new Dictionary<string, IEnumerable<string>> { { "Score", new[] { score.ToString() } }, { "Details", details } };
-            }
-
-            decimal netCurrentAssetValue = (latest.Extras["CurrentAssets"] ?? 0) - (latest.Extras["TotalLiabilities"] ?? 0);
-            if (netCurrentAssetValue > _tradingWorkflowState.FinancialMetrics[ticker].Last().MarketCap)
-            {
-                score += 4;
-                details.Add("Net-Net: NCAV > Market Cap (classic Graham deep value).");
-            }
-            else if (netCurrentAssetValue >= _tradingWorkflowState.FinancialMetrics[ticker].Last().MarketCap * 0.67m)
-            {
-                score += 2;
-                details.Add("NCAV Per Share >= 2/3 of Price Per Share (moderate net-net discount).");
-            }
+            results.AddDetail("No complete data for financial strength analysis");
+            return results;
         }
-        
 
-        return new Dictionary<string, IEnumerable<string>> { { "Score", new[] { score.ToString() } }, { "Details", details } };
+        if (latest == null || _tradingWorkflowState.FinancialMetrics[ticker].Last().MarketCap <= 0)
+        {
+            results.AddDetail("Insufficient data to perform valuation.");
+            return results;
+        }
+
+        decimal netCurrentAssetValue = (latest.Extras["TotalAssets"] ?? 0) - (latest.Extras["TotalLiabilities"] ?? 0);
+        if (netCurrentAssetValue > _tradingWorkflowState.FinancialMetrics[ticker].Last().MarketCap)
+        {
+            results.IncreaseScore(4);
+            results.AddDetail("Net-Net: NCAV > Market Cap (classic Graham deep value).");
+        }
+        else if (netCurrentAssetValue >= _tradingWorkflowState.FinancialMetrics[ticker].Last().MarketCap * 0.67m)
+        {
+            results.IncreaseScore(2);
+            results.AddDetail("NCAV Per Share >= 2/3 of Price Per Share (moderate net-net discount).");
+        }
+
+        return results;
     }
 
-    public TradeSignal GenerateOutput()
+    public TradeSignal GenerateOutput(string ticker)
     {
-        var tickers = _tradingWorkflowState.Tickers;
-        if (tickers == null || tickers.Count == 0)
+        if (string.IsNullOrWhiteSpace(ticker))
         {
             return new TradeSignal
             {
                 Signal = "neutral",
                 Confidence = 0,
-                Reasoning = "No tickers provided."
+                Reasoning = "No ticker provided."
             };
         }
 
@@ -220,7 +224,7 @@ public class BenGraham : ITradingAgent
             };
         }
 
-        var ticker = tickers[0]; // Assuming single ticker processing, adjust if needed.
+        //var ticker = tickers[0]; // Assuming single ticker processing, adjust if needed.
         var analysisData = new Dictionary<string, object>
         {
             { "FinancialMetrics", _tradingWorkflowState.FinancialMetrics },
@@ -266,7 +270,7 @@ public class BenGraham : ITradingAgent
 
         var requestContent = JsonSerializer.Serialize(payload);
 
-        if(!_chatter.TryPost("chat/completions", requestContent, out string response))
+        if (!_chatter.TryPost("chat/completions", requestContent, out string response))
         {
             return new TradeSignal
             {

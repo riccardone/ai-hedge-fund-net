@@ -36,7 +36,7 @@ public class CashFlowReport
     public decimal ProceedsFromSaleOfTreasuryStock { get; set; }
     public decimal ChangeInCashAndCashEquivalents { get; set; }
     public decimal ChangeInExchangeRate { get; set; }
-    public decimal NetIncome { get; set; }
+    public decimal? NetIncome { get; set; }
 
     public decimal? OperatingCashFlow { get; set; }
     public decimal? FreeCashFlow { get; set; }

@@ -111,15 +111,8 @@ public class AlphaVantageDataReader : Contracts.IDataReader
                     var cf = cashFlowReports[i];
                     var sharesOutstanding = balanceReports[i].CommonStockSharesOutstanding;
                     tmpMetrics.FreeCashFlowPerShare = cf.OperatingCashflow / sharesOutstanding;
-                    decimal? payoutRatio;
-                    if (i < incomeReports.Count)
-                    {
-                        var inc = incomeReports[i];
-                        payoutRatio = CalculatePayoutRatio(cf, inc);
-                    }
-                    else
-                        payoutRatio = CalculatePayoutRatio(cf, null);
-
+                    if(!TryCalculatePayoutRatio(cf, i < incomeReports.Count ? incomeReports[i] : null, out decimal payoutRatio))
+                        Logger.Warn($"Can't calculate payoutRatio for {ticker}");
                     tmpMetrics.PayoutRatio = payoutRatio;
                 }
 
@@ -141,20 +134,29 @@ public class AlphaVantageDataReader : Contracts.IDataReader
         return true;
     }
 
-    public static decimal? CalculatePayoutRatio(
-        CashFlowReport? cashFlow,
-        IncomeStatementReport? incomeStatement)
+    private static bool TryCalculatePayoutRatio(CashFlowReport? cashFlow, IncomeStatementReport? incomeStatement, out decimal payoutRatio)
     {
-        if (cashFlow?.DividendPayout.HasValue == true &&
-            incomeStatement?.NetIncome.HasValue == true &&
-            incomeStatement.NetIncome != 0)
+        payoutRatio = 0;
+
+        if (cashFlow?.DividendPayout is null)
+            return false;
+
+        // Prefer NetIncome from income statement if available
+        if (incomeStatement?.NetIncome is decimal netIncome && netIncome != 0)
         {
-            return cashFlow.DividendPayout.Value / incomeStatement.NetIncome.Value;
+            payoutRatio = cashFlow.DividendPayout.Value / netIncome;
+            return true;
         }
 
-        return null;
-    }
+        // Fallback: use NetIncome from cash flow, if available
+        if (cashFlow.NetIncome is decimal fallbackNetIncome && fallbackNetIncome != 0)
+        {
+            payoutRatio = cashFlow.DividendPayout.Value / fallbackNetIncome;
+            return true;
+        }
 
+        return false;
+    }
 
     public bool TryGetFinancialLineItemsAsync(string ticker, DateTime endDate, string period, int limit, out IList<FinancialLineItem> financialLineItems)
     {
