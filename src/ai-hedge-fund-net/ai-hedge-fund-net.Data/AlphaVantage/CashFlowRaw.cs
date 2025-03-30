@@ -1,4 +1,4 @@
-﻿namespace ai_hedge_fund_net.Data.AlphaVantageModel;
+﻿namespace ai_hedge_fund_net.Data.AlphaVantage;
 
 public class CashFlowRaw
 {
