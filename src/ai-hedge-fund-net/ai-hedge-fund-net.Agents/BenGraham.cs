@@ -1,6 +1,7 @@
 ﻿using ai_hedge_fund_net.Contracts;
 using ai_hedge_fund_net.Contracts.Model;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace ai_hedge_fund_net.Agents;
 
@@ -196,32 +197,17 @@ public class BenGraham : ITradingAgent
     {
         if (string.IsNullOrWhiteSpace(ticker))
         {
-            return new TradeSignal
-            {
-                Signal = "neutral",
-                Confidence = 0,
-                Reasoning = "No ticker provided."
-            };
+            return new TradeSignal(ticker, "neutral", 0, "No ticker provided.");
         }
 
         if (!_tradingWorkflowState.FinancialMetrics.Any())
         {
-            return new TradeSignal
-            {
-                Signal = "neutral",
-                Confidence = 0,
-                Reasoning = "No metrics provided."
-            };
+            return new TradeSignal(ticker, "neutral", 0, "No metrics provided.");
         }
 
         if (!_tradingWorkflowState.FinancialLineItems.Any())
         {
-            return new TradeSignal
-            {
-                Signal = "neutral",
-                Confidence = 0,
-                Reasoning = "No financial data provided."
-            };
+            return new TradeSignal(ticker, "neutral", 0, "No financial data provided.");
         }
 
         //var ticker = tickers[0]; // Assuming single ticker processing, adjust if needed.
@@ -248,7 +234,7 @@ public class BenGraham : ITradingAgent
         var userMessage = @$"Based on the following analysis, create a Graham-style investment signal:
 
             Analysis Data for {ticker}:
-            {JsonSerializer.Serialize(analysisData, new JsonSerializerOptions { WriteIndented = true })}
+            {JsonSerializer.Serialize(analysisData)}
 
             Return JSON exactly in this format:
             {{
@@ -272,12 +258,8 @@ public class BenGraham : ITradingAgent
 
         if (!_chatter.TryPost("chat/completions", requestContent, out string response))
         {
-            return new TradeSignal
-            {
-                Signal = "neutral",
-                Confidence = 0,
-                Reasoning = $"Error generating analysis ({response}). Defaulting to neutral."
-            };
+            return new TradeSignal(ticker, "neutral", 0,
+                $"Error generating analysis ({response}). Defaulting to neutral.");
         }
 
         using var doc = JsonDocument.Parse(response);
@@ -285,20 +267,53 @@ public class BenGraham : ITradingAgent
 
         if (string.IsNullOrEmpty(content))
         {
-            return new TradeSignal
-            {
-                Signal = "neutral",
-                Confidence = 0,
-                Reasoning = "Error processing analysis; defaulting to neutral."
-            };
+            return new TradeSignal(ticker, "neutral", 0, "Error processing analysis; defaulting to neutral.");
         }
 
-        var parsedResult = JsonSerializer.Deserialize<TradeSignal>(content);
-        return parsedResult ?? new TradeSignal
+        try
         {
-            Signal = "neutral",
-            Confidence = 0,
-            Reasoning = "Error parsing response; defaulting to neutral."
-        };
+            if (!TryExtractJson(content, out var cleanedJson))
+                return new TradeSignal(ticker, "neutral", 0, "Empty result from AI. Defaulting to neutral.");
+            var result = JsonSerializer.Deserialize<TradeSignal>(cleanedJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            result.SetTicker(ticker);
+            return result;
+
+        }
+        catch (Exception ex)
+        {
+            return new TradeSignal(ticker, "neutral", 0, "Failed to parse AI response. Defaulting to neutral.");
+        }
+    }
+
+    private bool TryExtractJson(string content, out string json)
+    {
+        json = string.Empty;
+
+        if (content.StartsWith("```"))
+        {
+            var startIndex = content.IndexOf("{");
+            var endIndex = content.LastIndexOf("}");
+            if (startIndex >= 0 && endIndex > startIndex)
+            {
+                json = content[startIndex..(endIndex + 1)];
+                return true;
+            }
+        }
+
+        var match = Regex.Match(content, @"\{[\s\S]*?\}");
+        if (match.Success)
+        {
+            json = match.Value;
+            return true;
+        }
+
+        content = content.Trim();
+        if (content.StartsWith("{") && content.EndsWith("}"))
+        {
+            json = content;
+            return true;
+        }
+
+        return false;
     }
 }

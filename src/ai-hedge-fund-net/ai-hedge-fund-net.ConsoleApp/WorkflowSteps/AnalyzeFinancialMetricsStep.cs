@@ -36,11 +36,19 @@ public class AnalyzeFinancialMetricsStep : StepBody
                 continue;
             var analysisResult = agent.Run(context);
 
-            if (analysisResult.OutcomeValue is TradeSignal tradeSignal)
+            if (analysisResult.OutcomeValue is List<TradeSignal> tradeSignals)
             {
-                Logger.Info($"{analyst} analysis completed with signal: {tradeSignal.Signal} {tradeSignal.Reasoning}");
-                //state.FinancialMetrics.Add(analyst, new FinancialMetrics { Analysis = tradeSignal });
-                state.AnalystSignals.Add(analyst, tradeSignal);
+                foreach (var tradeSignal in tradeSignals)
+                {
+                    Logger.Info($"{analyst} {tradeSignal.Ticker} analysis completed with signal: {tradeSignal.Signal} {tradeSignal.Reasoning}");
+                    if (!state.AnalystSignals.TryGetValue(analyst, out var signals))
+                    {
+                        signals = new Dictionary<string, TradeSignal>();
+                        state.AnalystSignals[analyst] = signals;
+                    }
+
+                    signals[tradeSignal.Ticker] = tradeSignal;
+                }
             }
             else
             {

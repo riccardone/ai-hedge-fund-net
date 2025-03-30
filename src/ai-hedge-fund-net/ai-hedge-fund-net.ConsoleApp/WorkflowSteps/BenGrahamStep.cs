@@ -48,11 +48,11 @@ public class BenGrahamStep : StepBody
             Logger.Info($"{ticker} Valuation: Score {valuation[ticker].Score} {string.Join(", ", valuation[ticker].Details)}");
         }
 
+        var tradeSignals = new List<TradeSignal>();
         foreach (var ticker in workflowState.Tickers)
         {
-            tradingAgent.GenerateOutput(ticker);
+            tradeSignals.Add(tradingAgent.GenerateOutput(ticker));
         }
-        return ExecutionResult.Next();
-        //return ExecutionResult.Outcome(tradingAgent.GenerateOutput());
+        return ExecutionResult.Outcome(tradeSignals);
     }
 }
