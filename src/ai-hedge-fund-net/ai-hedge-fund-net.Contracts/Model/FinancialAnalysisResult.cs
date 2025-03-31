@@ -5,13 +5,15 @@ public class FinancialAnalysisResult
     private readonly List<string> _details = new List<string>();
     public int Score { get; private set; }
     public IEnumerable<string> Details => _details;
+    public int MaxScore { get; private set; }
 
     public FinancialAnalysisResult() { }
 
-    public FinancialAnalysisResult(int score, IEnumerable<string> details)
+    public FinancialAnalysisResult(int score, IEnumerable<string> details, int maxScore)
     {
         _details = details.ToList();
         Score = score;
+        MaxScore = maxScore;
     }
 
     public void AddDetail(string detail)

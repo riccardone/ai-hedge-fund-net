@@ -1,46 +1,38 @@
-﻿using ai_hedge_fund_net.Agents;
+﻿using ai_hedge_fund_net.Contracts;
 using ai_hedge_fund_net.Contracts.Model;
 using NLog;
 using WorkflowCore.Interface;
 using WorkflowCore.Models;
 
-namespace ai_hedge_fund_net.ConsoleApp.WorkflowSteps
+namespace ai_hedge_fund_net.ConsoleApp.WorkflowSteps;
+
+public class CathieWoodStep : StepBody
 {
-    public class CathieWoodStep : StepBody
+    private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+
+    public TradingWorkflowState State { get; set; }
+    public IChatter Chatter { get; set; }
+    public string Ticker { get; set; }
+
+    public TradeSignal Output { get; set; }
+
+    public override ExecutionResult Run(IStepExecutionContext context)
     {
-        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+        Logger.Info($"[CathieWoodStep] Running agent for ticker: {Ticker}");
 
-        public override ExecutionResult Run(IStepExecutionContext context)
-        {
-            // Get TradingAgent from Workflow State
-            var workflowState = context.Workflow.Data as TradingWorkflowState;
-            
-            var tradingAgent = new CathieWood();
+        var agent = new CathieWood(State, Chatter);
+        Output = agent.GenerateOutput(Ticker);
 
-            Logger.Info($"[{tradingAgent.Name}] Analyzing fundamental investment signals...");
+        if (State.AnalystSignals == null)
+            State.AnalystSignals = new();
 
-            // Mock financial data (Replace with real data)
-            var financialMetrics = workflowState.FinancialMetrics;
-            var financialLineItems = workflowState.FinancialLineItems;
+        if (!State.AnalystSignals.ContainsKey("cathie_wood_agent"))
+            State.AnalystSignals["cathie_wood_agent"] = new Dictionary<string, object>();
 
-            // Call Ben Graham's analysis methods
-            //var earningsStability = tradingAgent.AnalyzeEarningsStability();
-            //var financialStrength = tradingAgent.AnalyzeFinancialStrength();
-            //var valuation = tradingAgent.AnalyzeValuation();
+        State.AnalystSignals["cathie_wood_agent"][Ticker] = Output;
 
-            //// Log analysis results
-            //Logger.Info($"Earnings Stability: {string.Join(", ", earningsStability["Details"])}");
-            //Logger.Info($"Financial Strength: {string.Join(", ", financialStrength["Details"])}");
-            //Logger.Info($"Valuation: {string.Join(", ", valuation["Details"])}");
+        Logger.Info($"[CathieWoodStep] Signal for {Ticker}: {Output.Signal}, Confidence: {Output.Confidence}, Reasoning: {Output.Reasoning}");
 
-            //ExecutionResult.Outcome(tradingAgent.GenerateOutput());
-
-            return ExecutionResult.Next();
-        }
-
-        private void LoadFinancials(TradingWorkflowState tradingWorkflowState)
-        {
-
-        }
+        return ExecutionResult.Next();
     }
 }
