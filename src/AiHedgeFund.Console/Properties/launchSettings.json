@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "AiHedgeFund.Console": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}
