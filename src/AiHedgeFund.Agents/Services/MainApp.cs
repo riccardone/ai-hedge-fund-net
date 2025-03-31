@@ -1,31 +1,31 @@
 ﻿using AiHedgeFund.Contracts;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
+using NLog;
 
 namespace AiHedgeFund.Agents.Services;
 
 public class MainApp : IHostedService
 {
-    private readonly ILogger<MainApp> _logger;
+    private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
     private readonly PortfolioManager _portfolio;
+    private readonly AppArguments _args;
 
-    public MainApp(ILogger<MainApp> logger, PortfolioManager portfolio)
+    public MainApp(PortfolioManager portfolio, AppArguments args)
     {
-        _logger = logger;
         _portfolio = portfolio;
+        _args = args;
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
+        Logger.Info("Starting with agent: {0}, risk-level: {1}", _args.AgentName, _args.RiskLevel);
+
         var state = new TradingWorkflowState
         {
-            // Populate your workflow state here
+            // Use _args.RiskLevel if needed
         };
 
-        await _portfolio.EvaluateAsync("ben_graham", state);
-        await _portfolio.EvaluateAsync("risk_manager", state);
-
-        // End app after main logic
+        await _portfolio.EvaluateAsync(_args.AgentName, state);
         Environment.Exit(0);
     }
 
