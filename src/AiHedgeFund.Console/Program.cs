@@ -4,11 +4,14 @@ using AiHedgeFund.Agents.Registry;
 using AiHedgeFund.Agents.Services;
 using AiHedgeFund.Contracts;
 using AiHedgeFund.Data;
+using AiHedgeFund.Data.AlphaVantage;
+using AiHedgeFund.Data.Mock;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NLog.Extensions.Logging;
+using AlphaVantageAuthHandler = AiHedgeFund.Data.AlphaVantageAuthHandler;
 
 namespace AiHedgeFund.Console;
 
@@ -21,7 +24,10 @@ internal class Program
             .ConfigureServices((context, services) =>
             {
                 services.AddSingleton(appArgs);
+                services.AddSingleton<IDataReader, AlphaVantageDataReader>();
+                services.AddSingleton<IPriceVolumeProvider, FakePriceVolumeProvider>();
                 services.AddSingleton<IChatter, OpenAiChatter>();
+                services.AddSingleton<TradingInitializer>();
                 services.AddSingleton<IAgentRegistry, AgentRegistry>();
                 services.AddSingleton<BenGrahamAgent>();
                 services.AddSingleton<CathieWoodAgent>();

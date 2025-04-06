@@ -1,4 +1,4 @@
-﻿namespace AiHedgeFund.Contracts;
+﻿namespace AiHedgeFund.Contracts.Model;
 
 public class FinancialAnalysisResult
 {

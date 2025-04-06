@@ -1,5 +1,4 @@
-﻿using AiHedgeFund.Contracts;
-using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.Hosting;
 using NLog;
 
 namespace AiHedgeFund.Agents.Services;
@@ -7,26 +6,29 @@ namespace AiHedgeFund.Agents.Services;
 public class MainApp : IHostedService
 {
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
-    private readonly PortfolioManager _portfolio;
     private readonly AppArguments _args;
+    private readonly TradingInitializer _initializer;
+    private readonly PortfolioManager _portfolio;
+    private readonly RiskManagerAgent _riskAgent;
 
-    public MainApp(PortfolioManager portfolio, AppArguments args)
+    public MainApp(AppArguments args, TradingInitializer initializer, PortfolioManager portfolio, RiskManagerAgent riskAgent)
     {
-        _portfolio = portfolio;
         _args = args;
+        _initializer = initializer;
+        _portfolio = portfolio;
+        _riskAgent = riskAgent;
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        Logger.Info("Starting with agent: {0}, risk-level: {1}", _args.AgentName, _args.RiskLevel);
+        var state = await _initializer.InitializeAsync();
 
-        var state = new TradingWorkflowState
-        {
-            // Use _args.RiskLevel if needed
-        };
+        foreach (var agent in state.SelectedAnalysts)
+            await _portfolio.EvaluateAsync(agent, state);
 
-        await _portfolio.EvaluateAsync(_args.AgentName, state);
-        Environment.Exit(0);
+        _portfolio.RunRiskAssessments("risk_management_agent", state, _riskAgent);
+
+        Environment.Exit(0); 
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;

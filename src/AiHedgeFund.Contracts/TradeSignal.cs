@@ -21,4 +21,9 @@ public class TradeSignal
     public string Signal { get; set; }
     public decimal Confidence { get; set; }
     public string Reasoning { get; set; }
+
+    public override string ToString()
+    {
+        return $"{Ticker} Signal: {Signal} Confidence: {Confidence} Reasoning: {Reasoning}";
+    }
 }
