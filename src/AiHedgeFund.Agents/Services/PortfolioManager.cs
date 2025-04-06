@@ -13,11 +13,11 @@ public class PortfolioManager
         _agentRegistry = agentRegistry;
     }
 
-    public async Task EvaluateAsync(string agentName, TradingWorkflowState state)
+    public void Evaluate(string agentName, TradingWorkflowState state)
     {
         if (_agentRegistry.TryGet<TradeSignal>(agentName, out var agentFunc))
         {
-            var result = await agentFunc(state);
+            var result = agentFunc(state);
             foreach (var tradeSignal in result)
             {
                 Logger.Info(tradeSignal.ToString);

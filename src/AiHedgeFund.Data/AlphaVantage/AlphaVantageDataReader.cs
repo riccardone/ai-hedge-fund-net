@@ -138,6 +138,7 @@ public class AlphaVantageDataReader : IDataReader
                     var inc = incomeReports[i];
                     tmpMetrics.NetMargin = inc.NetIncome / inc.TotalRevenue;
                     tmpMetrics.OperatingIncomeGrowth = inc.OperatingIncome / inc.TotalRevenue;
+                    tmpMetrics.GrossMargin = incomeReports[i].GrossMargin;
                 }
 
                 if (i < cashFlowReports.Count)
@@ -275,6 +276,7 @@ public class AlphaVantageDataReader : IDataReader
                 reportPeriod: fiscalDate.ToString("yyyy-MM-dd"),
                 period: period,
                 currency: "USD",
+                grossMargin: 0m,
                 extras: extras
             ));
         }

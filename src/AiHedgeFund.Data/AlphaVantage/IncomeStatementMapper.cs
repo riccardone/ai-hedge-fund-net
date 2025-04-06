@@ -26,6 +26,14 @@ public static class IncomeStatementMapper
             // Normalize keys to match class properties
             switch (key.ToLowerInvariant())
             {
+                case "totalrevenue":
+                    var totalRevenue = ParseDecimal(rawReport["totalRevenue"]);
+                    var costOfRevenue = ParseDecimal(rawReport["costOfRevenue"]);
+                    if (totalRevenue.HasValue && costOfRevenue.HasValue)
+                    {
+                        report.GrossMargin = (totalRevenue.Value - costOfRevenue.Value) / totalRevenue.Value;
+                    }
+                    break;
                 case "fiscaldateending":
                     report.FiscalDateEnding = DateTime.Parse(value);
                     break;

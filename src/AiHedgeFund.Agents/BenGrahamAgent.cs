@@ -17,7 +17,7 @@ public class BenGrahamAgent
         _chatter = chatter;
     }
 
-    public async Task<IEnumerable<TradeSignal>> Run(TradingWorkflowState state)
+    public IEnumerable<TradeSignal> Run(TradingWorkflowState state)
     {
         var signals = new List<TradeSignal>();
         if (!state.Tickers.Any())
@@ -38,7 +38,7 @@ public class BenGrahamAgent
             Logger.Info("{0} Financial Strength: {1}", ticker, string.Join("; ", strength.Details));
             Logger.Info("{0} Valuation: {1}", ticker, string.Join("; ", valuation.Details));
 
-            signals.Add(await GenerateOutput(state, ticker));
+            signals.Add(GenerateOutput(state, ticker));
         }
 
         return signals;
@@ -248,7 +248,7 @@ public class BenGrahamAgent
         return false;
     }
 
-    private async Task<TradeSignal> GenerateOutput(TradingWorkflowState state, string ticker)
+    private TradeSignal GenerateOutput(TradingWorkflowState state, string ticker)
     {
         if (string.IsNullOrWhiteSpace(ticker))
         {

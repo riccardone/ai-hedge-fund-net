@@ -16,6 +16,7 @@ public class IncomeStatementReport
     public decimal? EarningsPerShare { get; set; }
     public decimal? TotalRevenue { get; set; }
     public decimal? OperatingIncome { get; set; }
+    public decimal GrossMargin { get; set; }
 
     // Other fields not directly mapped above
     public Dictionary<string, decimal?> Extras { get; set; } = new(StringComparer.OrdinalIgnoreCase);
