@@ -43,7 +43,7 @@ public class CathieWoodAgent
                 continue;
             }
 
-            var disruptive = AnalyzeDisruptivePotential(metrics);
+            var disruptive = AnalyzeDisruptivePotential(metrics, lineItems);
             var innovation = AnalyzeInnovationGrowth(metrics, lineItems);
             var valuation = AnalyzeValuation(metrics, marketCap.Value);
 
@@ -68,7 +68,7 @@ public class CathieWoodAgent
         return signals;
     }
 
-    private AnalysisResult AnalyzeDisruptivePotential(IEnumerable<FinancialMetrics> metrics)
+    private AnalysisResult AnalyzeDisruptivePotential(IEnumerable<FinancialMetrics> metrics, IEnumerable<FinancialLineItem> lineItems)
     {
         int score = 0;
         var details = new List<string>();
@@ -113,6 +113,30 @@ public class CathieWoodAgent
             if (revGrowth > opGrowth) { score += 2; details.Add("Positive operating leverage: Revenue growth exceeds op margin growth"); }
         }
 
+        var rAndDs = lineItems?
+            .Where(li => li?.Extras != null)
+            .SelectMany(li => li.Extras.TryGetValue("ResearchAndDevelopment", out var r) && r is decimal d ? new[] { d } : Array.Empty<decimal>())
+            .ToList() ?? new List<decimal>();
+
+        var latestRevenue = ordered.LastOrDefault()?.TotalRevenue;
+        if (rAndDs.Count >= 2 && latestRevenue.HasValue && latestRevenue.Value < 10_000_000) // $10M
+        {
+            var rAndDTrend = rAndDs[^1] - rAndDs[0];
+            if (rAndDTrend > 0) score += 2;
+
+            var rAndDIntensity = rAndDs[^1] / (latestRevenue.Value == 0 ? 1 : latestRevenue.Value);
+            if (rAndDIntensity > 5) // R&D is 5x revenue
+            {
+                score += 3;
+                details.Add($"Disruptive profile: R&D intensity = {rAndDIntensity:N1}x revenue");
+            }
+        }
+
+        if (score == 0)
+        {
+            details.Add("No strong indicators of disruptive potential found");
+        }
+
         return new AnalysisResult { Score = score, Details = string.Join("; ", details) };
     }
 
@@ -121,8 +145,15 @@ public class CathieWoodAgent
         int score = 0;
         var details = new List<string>();
 
-        var rds = lineItems.SelectMany(li => li.Extras.TryGetValue("ResearchAndDevelopment", out var r) ? new[] { (decimal)r } : Array.Empty<decimal>()).ToList();
-        var revenues = lineItems.SelectMany(li => li.Extras.TryGetValue("TotalRevenue", out var rev) ? new[] { (decimal)rev } : Array.Empty<decimal>()).ToList();
+        var rds = lineItems?
+            .Where(li => li?.Extras != null)
+            .SelectMany(li => li.Extras.TryGetValue("ResearchAndDevelopment", out var r) && r is decimal d ? new[] { d } : Array.Empty<decimal>())
+            .ToList() ?? new List<decimal>();
+
+        var revenues = lineItems?
+            .Where(li => li?.Extras != null)
+            .SelectMany(li => li.Extras.TryGetValue("TotalRevenue", out var rev) && rev is decimal d ? new[] { d } : Array.Empty<decimal>())
+            .ToList() ?? new List<decimal>();
 
         if (rds.Count >= 2 && revenues.Count >= 2)
         {
