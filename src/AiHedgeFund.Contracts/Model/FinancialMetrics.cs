@@ -45,4 +45,8 @@ public class FinancialMetrics
     public decimal? EarningsPerShare { get; set; }
     public decimal? BookValuePerShare { get; set; }
     public decimal? FreeCashFlowPerShare { get; set; }
+    public decimal OperatingCashFlow { get; set; }
+    public decimal? TotalRevenue { get; set; }
+    public decimal CapitalExpenditure { get; set; }
+    public decimal DividendsAndOtherCashDistributions { get; set; }
 }

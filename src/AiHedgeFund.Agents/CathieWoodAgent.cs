@@ -45,7 +45,7 @@ public class CathieWoodAgent
 
             var disruptive = AnalyzeDisruptivePotential(metrics);
             var innovation = AnalyzeInnovationGrowth(metrics, lineItems);
-            var valuation = AnalyzeValuation(lineItems, marketCap.Value);
+            var valuation = AnalyzeValuation(metrics, marketCap.Value);
 
             Logger.Info("{0} Disruptive Potential: {1}", ticker, disruptive.Details);
             Logger.Info("{0} Innovation Growth: {1}", ticker, innovation.Details);
@@ -121,8 +121,8 @@ public class CathieWoodAgent
         int score = 0;
         var details = new List<string>();
 
-        var rds = lineItems.SelectMany(li => li.Extras.TryGetValue("research_and_development", out var r) ? new[] { (decimal)r } : Array.Empty<decimal>()).ToList();
-        var revenues = lineItems.SelectMany(li => li.Extras.TryGetValue("revenue", out var rev) ? new[] { (decimal)rev } : Array.Empty<decimal>()).ToList();
+        var rds = lineItems.SelectMany(li => li.Extras.TryGetValue("ResearchAndDevelopment", out var r) ? new[] { (decimal)r } : Array.Empty<decimal>()).ToList();
+        var revenues = lineItems.SelectMany(li => li.Extras.TryGetValue("TotalRevenue", out var rev) ? new[] { (decimal)rev } : Array.Empty<decimal>()).ToList();
 
         if (rds.Count >= 2 && revenues.Count >= 2)
         {
@@ -139,7 +139,7 @@ public class CathieWoodAgent
             }
         }
 
-        var fcf = lineItems.SelectMany(li => li.Extras.TryGetValue("free_cash_flow", out var f) ? new[] { (decimal)f } : Array.Empty<decimal>()).ToList();
+        var fcf = metrics.Select(li => li.OperatingCashFlow).ToList();
         if (fcf.Count >= 2)
         {
             var growth = (fcf[^1] - fcf[0]) / Math.Abs(fcf[0]);
@@ -158,7 +158,7 @@ public class CathieWoodAgent
             else if (marginTrend > 0) { score += 1; details.Add("Improving op efficiency"); }
         }
 
-        var capex = lineItems.SelectMany(li => li.Extras.TryGetValue("capital_expenditure", out var c) ? new[] { (decimal)c } : Array.Empty<decimal>()).ToList();
+        var capex = metrics.Select(li => li.CapitalExpenditure).ToList();
         if (capex.Count >= 2 && revenues.Count >= 2)
         {
             var intensity = Math.Abs(capex[^1]) / revenues[^1];
@@ -167,7 +167,7 @@ public class CathieWoodAgent
             else if (intensity > 0.05m) { score += 1; details.Add("Moderate capex for growth"); }
         }
 
-        var dividends = lineItems.SelectMany(li => li.Extras.TryGetValue("dividends_and_other_cash_distributions", out var d) ? new[] { (decimal)d } : Array.Empty<decimal>()).ToList();
+        var dividends = metrics.Select(li => li.DividendsAndOtherCashDistributions).ToList();
         if (dividends.Count > 0 && fcf.Count > 0)
         {
             var payoutRatio = fcf[^1] != 0 ? dividends[^1] / fcf[^1] : 1;
@@ -178,9 +178,9 @@ public class CathieWoodAgent
         return new AnalysisResult { Score = score, Details = string.Join("; ", details) };
     }
 
-    private AnalysisResult AnalyzeValuation(IEnumerable<FinancialLineItem> lineItems, decimal marketCap)
+    private AnalysisResult AnalyzeValuation(IEnumerable<FinancialMetrics> metrics, decimal marketCap)
     {
-        var fcf = lineItems.SelectMany(li => li.Extras.TryGetValue("free_cash_flow", out var f) ? new[] { (decimal)f } : Array.Empty<decimal>()).ToList();
+        var fcf = metrics.Select(li => li.OperatingCashFlow).ToList();
         if (fcf.Count == 0 || fcf[^1] <= 0)
         {
             return new AnalysisResult { Score = 0, Details = $"No positive FCF for valuation; FCF = {fcf.LastOrDefault():N2}" };

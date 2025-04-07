@@ -11,14 +11,19 @@ public class IncomeStatementReport
 {
     public DateTime FiscalDateEnding { get; set; }
     public string ReportedCurrency { get; set; }
-
     public decimal? NetIncome { get; set; }
     public decimal? EarningsPerShare { get; set; }
     public decimal? TotalRevenue { get; set; }
+    public decimal? GrossProfit { get; set; }
     public decimal? OperatingIncome { get; set; }
+    public decimal? OperatingMargin => OperatingIncome.HasValue && TotalRevenue.HasValue ? OperatingIncome / TotalRevenue : 0;
+    public decimal? ResearchAndDevelopment { get; set; }
+    public decimal? SellingGeneralAndAdministrative { get; set; }
+    public decimal? InterestExpense { get; set; }
+    public decimal? IncomeBeforeTax { get; set; }
+    public decimal? CostOfRevenue { get; set; }
+    public decimal? IncomeTaxExpense { get; set; }
     public decimal GrossMargin { get; set; }
-
-    // Other fields not directly mapped above
     public Dictionary<string, decimal?> Extras { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     public Dictionary<string, decimal?> GetLineItems()
@@ -27,8 +32,17 @@ public class IncomeStatementReport
         {
             ["NetIncome"] = NetIncome,
             ["EarningsPerShare"] = EarningsPerShare,
-            ["TotalRevenue"] = Extras.TryGetValue("TotalRevenue", out var totalRevenue) ? totalRevenue : null,
-            ["GrossProfit"] = Extras.TryGetValue("GrossProfit", out var grossProfit) ? grossProfit : null,
+            ["TotalRevenue"] = TotalRevenue,
+            ["GrossProfit"] = GrossProfit,
+            ["OperatingIncome"] = OperatingIncome,
+            ["ResearchAndDevelopment"] = ResearchAndDevelopment,
+            ["SellingGeneralAndAdministrative"] = SellingGeneralAndAdministrative,
+            ["InterestExpense"] = InterestExpense,
+            ["IncomeBeforeTax"] = IncomeBeforeTax,
+            ["CostOfRevenue"] = CostOfRevenue,
+            ["IncomeTaxExpense"] = IncomeTaxExpense,
+            ["GrossMargin"] = GrossMargin
         };
     }
+
 }

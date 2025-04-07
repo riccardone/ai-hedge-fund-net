@@ -139,6 +139,8 @@ public class AlphaVantageDataReader : IDataReader
                     tmpMetrics.NetMargin = inc.NetIncome / inc.TotalRevenue;
                     tmpMetrics.OperatingIncomeGrowth = inc.OperatingIncome / inc.TotalRevenue;
                     tmpMetrics.GrossMargin = incomeReports[i].GrossMargin;
+                    tmpMetrics.TotalRevenue = inc.TotalRevenue;
+                    tmpMetrics.OperatingMargin = inc.OperatingMargin;
                 }
 
                 if (i < cashFlowReports.Count)
@@ -149,6 +151,10 @@ public class AlphaVantageDataReader : IDataReader
                     if(!TryCalculatePayoutRatio(cf, i < incomeReports.Count ? incomeReports[i] : null, out decimal payoutRatio))
                         Logger.Warn($"Can't calculate payoutRatio for {ticker}");
                     tmpMetrics.PayoutRatio = payoutRatio;
+                    tmpMetrics.OperatingCashFlow = cf.OperatingCashflow;
+                    tmpMetrics.CapitalExpenditure = cf.CapitalExpenditures;
+                    tmpMetrics.DividendsAndOtherCashDistributions =
+                        cf.DividendPayoutCommonStock + cf.DividendPayoutPreferredStock;
                 }
 
                 if (i < earningsReports.Count)
@@ -276,7 +282,6 @@ public class AlphaVantageDataReader : IDataReader
                 reportPeriod: fiscalDate.ToString("yyyy-MM-dd"),
                 period: period,
                 currency: "USD",
-                grossMargin: 0m,
                 extras: extras
             ));
         }
@@ -317,21 +322,6 @@ public class AlphaVantageDataReader : IDataReader
         return merged;
     }
 
-    //public IEnumerable<InsiderTrade> GetInsiderTrades(string ticker, DateTime endDate, DateTime? startDate = null, int limit = 1000)
-    //{
-    //    throw new NotImplementedException();
-    //}
-
-    //public IEnumerable<CompanyNews> GetCompanyNews(string ticker, DateTime endDate, DateTime startDate, int limit = 1000)
-    //{
-    //    throw new NotImplementedException();
-    //}
-
-    //public decimal? GetMarketCap(string ticker, DateTime endDate)
-    //{
-    //    throw new NotImplementedException();
-    //}
-
     public DataTable PricesToDf(IEnumerable<Price> prices)
     {
         var table = new DataTable();
@@ -364,10 +354,4 @@ public class AlphaVantageDataReader : IDataReader
 
         return sortedView.ToTable();
     }
-
-    //public DataTable GetPriceData(string ticker, DateTime startDate, DateTime endDate)
-    //{
-    //    TryGetPrices(ticker, startDate, endDate, out var prices);
-    //    return PricesToDf(prices);
-    //}
 }

@@ -23,38 +23,77 @@ public static class IncomeStatementMapper
 
         foreach (var (key, value) in rawReport)
         {
-            // Normalize keys to match class properties
-            switch (key.ToLowerInvariant())
+            var normalizedKey = key.ToLowerInvariant();
+            var parsedValue = ParseDecimal(value);
+
+            switch (normalizedKey)
             {
-                case "totalrevenue":
-                    var totalRevenue = ParseDecimal(rawReport["totalRevenue"]);
-                    var costOfRevenue = ParseDecimal(rawReport["costOfRevenue"]);
-                    if (totalRevenue.HasValue && costOfRevenue.HasValue)
-                    {
-                        report.GrossMargin = (totalRevenue.Value - costOfRevenue.Value) / totalRevenue.Value;
-                    }
-                    break;
                 case "fiscaldateending":
                     report.FiscalDateEnding = DateTime.Parse(value);
                     break;
+
                 case "reportedcurrency":
                     report.ReportedCurrency = value;
                     break;
+
                 case "netincome":
-                    report.NetIncome = ParseDecimal(value);
+                    report.NetIncome = parsedValue;
                     break;
+
                 case "eps":
-                    report.EarningsPerShare = ParseDecimal(value);
-                    extras["EarningsPerShare"] = report.EarningsPerShare;
+                case "earningspershare":
+                    report.EarningsPerShare = parsedValue;
                     break;
+
+                case "totalrevenue":
+                    report.TotalRevenue = parsedValue;
+                    break;
+
+                case "grossprofit":
+                    report.GrossProfit = parsedValue;
+                    break;
+
+                case "operatingincome":
+                    report.OperatingIncome = parsedValue;
+                    break;
+
+                case "researchanddevelopment":
+                    report.ResearchAndDevelopment = parsedValue;
+                    break;
+
+                case "sellinggeneralandadministrative":
+                    report.SellingGeneralAndAdministrative = parsedValue;
+                    break;
+
+                case "interestexpense":
+                    report.InterestExpense = parsedValue;
+                    break;
+
+                case "incomebeforetax":
+                    report.IncomeBeforeTax = parsedValue;
+                    break;
+
+                case "costofrevenue":
+                    extras["costOfRevenue"] = parsedValue; // needed to compute gross margin
+                    break;
+
+                case "incometaxexpense":
+                    report.IncomeTaxExpense = parsedValue;
+                    break;
+
                 default:
-                    if (decimal.TryParse(value, out var numeric))
-                        extras[key] = numeric;
+                    if (parsedValue.HasValue)
+                        extras[key] = parsedValue;
                     break;
             }
         }
 
-        // Always assign extras
+        // Compute GrossMargin if not already computed
+        if (report.TotalRevenue.HasValue && extras.TryGetValue("costOfRevenue", out var costOfRevenue) && costOfRevenue.HasValue)
+        {
+            report.GrossMargin = (report.TotalRevenue.Value - costOfRevenue.Value) / report.TotalRevenue.Value;
+        }
+
         report.Extras = extras;
         return report;
     }
