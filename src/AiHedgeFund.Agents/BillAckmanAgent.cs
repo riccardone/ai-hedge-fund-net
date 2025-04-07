@@ -2,6 +2,7 @@
 using AiHedgeFund.Contracts.Model;
 using NLog;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace AiHedgeFund.Agents;
 
@@ -48,7 +49,7 @@ public class BillAckmanAgent
 
             var businessQuality = AnalyzeBusinessQuality(metrics, lineItems);
             var financialDiscipline = AnalyzeFinancialDiscipline(metrics, lineItems);
-            var valuation = AnalyzeValuation(lineItems, marketCap);
+            var valuation = AnalyzeValuation(metrics, marketCap);
 
             Logger.Info("{0} Business Quality: {1}", ticker, string.Join("; ", businessQuality.Details));
             Logger.Info("{0} Financial Discipline: {1}", ticker, string.Join("; ", financialDiscipline.Details));
@@ -297,24 +298,31 @@ public class BillAckmanAgent
         return new FinancialAnalysisResult(result.Score, result.Details, maxScore);
     }
 
-    private static FinancialAnalysisResult AnalyzeValuation(IEnumerable<FinancialLineItem> lineItems, decimal? marketCap)
+    private class AnalysisResult
+    {
+        public decimal Score { get; set; }
+        public string Details { get; set; } = string.Empty;
+    }
+
+    private static FinancialAnalysisResult AnalyzeValuation(IEnumerable<FinancialMetrics> metrics, decimal? marketCap)
     {
         var result = new FinancialAnalysisResult();
         const int maxScore = 3;
 
-        if (!lineItems.Any() || marketCap == null || marketCap <= 0)
+        if (!metrics.Any() || marketCap == null || marketCap <= 0)
         {
             result.AddDetail("Insufficient data to perform valuation");
             return new FinancialAnalysisResult(0, result.Details, maxScore);
         }
 
-        var latest = lineItems.ToList()[^1];
-        if (!latest.Extras.TryGetValue("free_cash_flow", out var val) || val is not decimal fcf || fcf <= 0)
+        var fcf = metrics.Select(li => li.OperatingCashFlow).ToList();
+        if (fcf.Count == 0 || fcf[^1] <= 0)
         {
-            result.AddDetail($"No positive FCF for valuation; FCF = {val}");
-            return new FinancialAnalysisResult(0, result.Details, maxScore);
+            return new FinancialAnalysisResult(0,
+                new[] { $"No positive FCF for valuation; FCF = {fcf.LastOrDefault():N2}" }, maxScore);
         }
 
+        var baseFcf = fcf[^1];
         const decimal growthRate = 0.06m;
         const decimal discountRate = 0.10m;
         const int terminalMultiple = 15;
@@ -323,11 +331,11 @@ public class BillAckmanAgent
         decimal presentValue = 0;
         for (int year = 1; year <= projectionYears; year++)
         {
-            decimal futureFcf = fcf * (decimal)Math.Pow((double)(1 + growthRate), year);
+            decimal futureFcf = baseFcf * (decimal)Math.Pow((double)(1 + growthRate), year);
             presentValue += futureFcf / (decimal)Math.Pow((double)(1 + discountRate), year);
         }
 
-        decimal terminalValue = (fcf * (decimal)Math.Pow((double)(1 + growthRate), projectionYears) * terminalMultiple)
+        decimal terminalValue = (baseFcf * (decimal)Math.Pow((double)(1 + growthRate), projectionYears) * terminalMultiple)
                                 / (decimal)Math.Pow((double)(1 + discountRate), projectionYears);
 
         decimal intrinsicValue = presentValue + terminalValue;
@@ -345,6 +353,12 @@ public class BillAckmanAgent
         result.AddDetail($"Intrinsic value: ~{intrinsicValue:N0}");
         result.AddDetail($"Market cap: ~{marketCap:N0}");
         result.AddDetail($"Margin of safety: {marginOfSafety:P1}");
+        // debug
+        result.AddDetail($"Base FCF: {baseFcf:N0}");
+        result.AddDetail($"Present Value (5y): {presentValue:N0}");
+        result.AddDetail($"Terminal Value: {terminalValue:N0}");
+        result.AddDetail($"Intrinsic Value: {intrinsicValue:N0}");
+
 
         return new FinancialAnalysisResult(result.Score, result.Details, maxScore);
     }
@@ -431,32 +445,82 @@ public class BillAckmanAgent
             }}
         ";
 
-        var payload = JsonSerializer.Serialize(new
+        var payload = new
         {
-            system = systemMessage,
-            user = humanMessage
-        });
+            model = state.ModelName,
+            messages = new[]
+            {
+                new { role = "system", content = systemMessage },
+                new { role = "user", content = humanMessage }
+            },
+            temperature = 0.2
+        };
+
+        var json = JsonSerializer.Serialize(payload);
+
+        if (!_chatter.TryPost("chat/completions", json, out var response))
+        {
+            tradeSignal = new TradeSignal(ticker, "neutral", 0, "Error posting to LLM. Defaulting to neutral.");
+            return false;
+        }
 
         try
         {
-            if (_chatter.TryPost("/v1/agents/bill-ackman", payload, out var response))
+            using var doc = JsonDocument.Parse(response);
+            var content = doc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content")
+                .GetString();
+            if (string.IsNullOrEmpty(content))
             {
-                var parsed = JsonSerializer.Deserialize<TradeSignal>(response, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
-
-                if (parsed != null)
-                {
-                    parsed.Ticker = ticker;
-                    tradeSignal = parsed;
-                    return true;
-                }
+                tradeSignal = new TradeSignal(ticker, "neutral", 0, "Empty response from LLM. Defaulting to neutral.");
+                return false;
             }
+
+            if (!TryExtractJson(content, out var cleanedJson))
+            {
+                tradeSignal = new TradeSignal(ticker, "neutral", 0, "Failed to extract valid JSON from LLM response.");
+                return false;
+            }
+
+            var result = JsonSerializer.Deserialize<TradeSignal>(cleanedJson,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            result.SetTicker(ticker);
+            tradeSignal = result;
+            return true;
         }
         catch (Exception ex)
         {
-            Logger.Error(ex, $"[BillAckman] LLM call failed for {ticker}");
+            Logger.Error(ex, "Failed to deserialize LLM output for {0}", ticker);
+            tradeSignal = new TradeSignal(ticker, "neutral", 0, "Failed to parse LLM response. Defaulting to neutral.");
+            return false;
+        }
+    }
+
+    private bool TryExtractJson(string content, out string json)
+    {
+        json = string.Empty;
+
+        if (content.StartsWith("```"))
+        {
+            int start = content.IndexOf("{");
+            int end = content.LastIndexOf("}");
+            if (start >= 0 && end > start)
+            {
+                json = content[start..(end + 1)];
+                return true;
+            }
+        }
+
+        var match = Regex.Match(content, "\\{[\\s\\S]*?\\}");
+        if (match.Success)
+        {
+            json = match.Value;
+            return true;
+        }
+
+        if (content.Trim().StartsWith("{") && content.Trim().EndsWith("}"))
+        {
+            json = content;
+            return true;
         }
 
         return false;
