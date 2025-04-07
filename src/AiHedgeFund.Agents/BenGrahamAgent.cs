@@ -6,10 +6,16 @@ using NLog;
 
 namespace AiHedgeFund.Agents;
 
+/// <summary>
+/// Analyzes stocks using Benjamin Graham's classic value-investing principles:
+/// 1. Earnings stability over multiple years.
+/// 2. Solid financial strength(low debt, adequate liquidity).
+/// 3. Discount to intrinsic value(e.g.Graham Number or net-net).
+/// 4. Adequate margin of safety.
+/// </summary>
 public class BenGrahamAgent
 {
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
-
     private readonly IChatter _chatter;
 
     public BenGrahamAgent(IChatter chatter)

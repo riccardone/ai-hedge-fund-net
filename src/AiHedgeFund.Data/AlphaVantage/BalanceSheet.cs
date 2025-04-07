@@ -15,7 +15,7 @@ public class BalanceSheetReport
     public decimal? TotalCurrentAssets { get; set; }
     public decimal? TotalCurrentLiabilities { get; set; }
     public long? TotalShareholderEquity { get; set; }
-    public long? CommonStockSharesOutstanding { get; set; }
+    public decimal? CommonStockSharesOutstanding { get; set; }
 
     public Dictionary<string, decimal?> GetLineItems()
     {

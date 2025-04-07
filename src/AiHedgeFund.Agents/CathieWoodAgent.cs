@@ -6,6 +6,13 @@ using System.Text.RegularExpressions;
 
 namespace AiHedgeFund.Agents;
 
+/// <summary>
+/// Analyzes stocks using Cathie Wood's investing principles and LLM reasoning.
+/// 1. Prioritizes companies with breakthrough technologies or business models
+/// 2. Focuses on industries with rapid adoption curves and massive TAM(Total Addressable Market).
+/// 3. Invests mostly in AI, robotics, genomic sequencing, fintech, and blockchain.
+/// 4. Willing to endure short-term volatility for long-term gains.
+/// </summary>
 public class CathieWoodAgent
 {
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();

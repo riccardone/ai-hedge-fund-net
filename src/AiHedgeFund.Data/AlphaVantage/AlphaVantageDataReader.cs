@@ -131,6 +131,7 @@ public class AlphaVantageDataReader : IDataReader
                     tmpMetrics.DebtToEquity = bs.TotalLiabilities / bs.TotalShareholderEquity;
                     tmpMetrics.DebtToAssets = bs.TotalLiabilities / bs.TotalAssets;
                     tmpMetrics.BookValuePerShare = bs.TotalShareholderEquity / bs.CommonStockSharesOutstanding;
+                    tmpMetrics.CommonStockSharesOutstanding = bs.CommonStockSharesOutstanding;
                 }
 
                 if (i < incomeReports.Count)

@@ -49,4 +49,6 @@ public class FinancialMetrics
     public decimal? TotalRevenue { get; set; }
     public decimal CapitalExpenditure { get; set; }
     public decimal DividendsAndOtherCashDistributions { get; set; }
+    public decimal FreeCashFlow => OperatingCashFlow - CapitalExpenditure;
+    public decimal? CommonStockSharesOutstanding { get; set; }
 }
