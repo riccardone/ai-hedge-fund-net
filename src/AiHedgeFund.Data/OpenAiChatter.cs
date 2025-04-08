@@ -3,7 +3,7 @@ using AiHedgeFund.Contracts;
 
 namespace AiHedgeFund.Data;
 
-public class OpenAiChatter : IChatter
+public class OpenAiChatter : IHttpLib
 {
     private readonly HttpClient _client;
 

@@ -2,7 +2,7 @@
 
 public class AppArguments
 {
-    public List<string> AgentNames { get; set; } = new() { "bill_ackman" }; // "ben_graham" "cathie_wood"
+    public List<string> AgentNames { get; set; } = new() { "charlie_munger" }; // "ben_graham" "cathie_wood" "bill_ackman"
     public string RiskLevel { get; set; } = "medium";
     public List<string> Tickers { get; set; } = new() { "MSFT" };
 

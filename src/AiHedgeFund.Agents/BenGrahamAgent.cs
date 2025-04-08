@@ -16,9 +16,9 @@ namespace AiHedgeFund.Agents;
 public class BenGrahamAgent
 {
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
-    private readonly IChatter _chatter;
+    private readonly IHttpLib _chatter;
 
-    public BenGrahamAgent(IChatter chatter)
+    public BenGrahamAgent(IHttpLib chatter)
     {
         _chatter = chatter;
     }

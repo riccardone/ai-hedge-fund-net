@@ -16,6 +16,15 @@ public class BalanceSheetReport
     public decimal? TotalCurrentLiabilities { get; set; }
     public long? TotalShareholderEquity { get; set; }
     public decimal? CommonStockSharesOutstanding { get; set; }
+    public decimal? CashAndCashEquivalentsAtCarryingValue { get; set; }
+    public decimal? ShortTermDebt { get; set; }
+    public decimal? LongTermDebt { get; set; }
+    public decimal? Goodwill { get; set; }
+    public decimal? IntangibleAssets { get; set; }
+
+    public decimal? GoodwillAndIntangibleAssets => Goodwill.HasValue && IntangibleAssets.HasValue
+        ? Goodwill + IntangibleAssets
+        : IntangibleAssets ?? (Goodwill ?? 0);
 
     public Dictionary<string, decimal?> GetLineItems()
     {
@@ -25,7 +34,11 @@ public class BalanceSheetReport
             ["TotalLiabilities"] = TotalLiabilities,
             ["TotalCurrentAssets"] = TotalAssets,
             ["TotalCurrentLiabilities"] = TotalLiabilities,
-            ["TotalShareholderEquity"] = TotalShareholderEquity
+            ["TotalShareholderEquity"] = TotalShareholderEquity,
+            ["ShortTermDebt"] = ShortTermDebt,
+            ["LongTermDebt"] = LongTermDebt,
+            ["Goodwill"] = Goodwill,
+            ["IntangibleAssets"] = IntangibleAssets,
         };
     }
 }

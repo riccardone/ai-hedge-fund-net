@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AiHedgeFund.Agents", "AiHed
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AiHedgeFund.Data", "AiHedgeFund.Data\AiHedgeFund.Data.csproj", "{C9E70382-747D-4345-AAC1-51B7201A6AB8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AiHedgeFund.Tests", "AiHedgeFund.Tests\AiHedgeFund.Tests.csproj", "{8D2E8B8E-D57D-4400-9C8D-A177E11AB653}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{C9E70382-747D-4345-AAC1-51B7201A6AB8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C9E70382-747D-4345-AAC1-51B7201A6AB8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C9E70382-747D-4345-AAC1-51B7201A6AB8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8D2E8B8E-D57D-4400-9C8D-A177E11AB653}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8D2E8B8E-D57D-4400-9C8D-A177E11AB653}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8D2E8B8E-D57D-4400-9C8D-A177E11AB653}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8D2E8B8E-D57D-4400-9C8D-A177E11AB653}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

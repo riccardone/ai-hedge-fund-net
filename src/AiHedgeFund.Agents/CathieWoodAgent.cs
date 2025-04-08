@@ -16,9 +16,9 @@ namespace AiHedgeFund.Agents;
 public class CathieWoodAgent
 {
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
-    private readonly IChatter _chatter;
+    private readonly IHttpLib _chatter;
 
-    public CathieWoodAgent(IChatter chatter)
+    public CathieWoodAgent(IHttpLib chatter)
     {
         _chatter = chatter;
     }

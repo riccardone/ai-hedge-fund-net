@@ -24,7 +24,11 @@ public static class BalanceSheetMapper
             TotalLiabilities = ParseLong(raw.TotalLiabilities),
             TotalCurrentLiabilities = ParseLong(raw.TotalCurrentLiabilities),
             TotalShareholderEquity = ParseLong(raw.TotalShareholderEquity),
-            CommonStockSharesOutstanding = ParseLong(raw.CommonStockSharesOutstanding)
+            CommonStockSharesOutstanding = ParseLong(raw.CommonStockSharesOutstanding),
+            ShortTermDebt = ParseLong(raw.ShortTermDebt),
+            LongTermDebt = ParseLong(raw.LongTermDebt),
+            Goodwill = ParseLong(raw.Goodwill),
+            IntangibleAssets = ParseLong(raw.IntangibleAssets),
         };
     }
 

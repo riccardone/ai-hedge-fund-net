@@ -26,12 +26,13 @@ internal class Program
                 services.AddSingleton(appArgs);
                 services.AddSingleton<IDataReader, AlphaVantageDataReader>();
                 services.AddSingleton<IPriceVolumeProvider, FakePriceVolumeProvider>();
-                services.AddSingleton<IChatter, OpenAiChatter>();
+                services.AddSingleton<IHttpLib, OpenAiChatter>();
                 services.AddSingleton<TradingInitializer>();
                 services.AddSingleton<IAgentRegistry, AgentRegistry>();
                 services.AddSingleton<BenGrahamAgent>();
                 services.AddSingleton<CathieWoodAgent>();
                 services.AddSingleton<BillAckmanAgent>();
+                services.AddSingleton<CharlieMungerAgent>();
                 services.AddSingleton<RiskManagerAgent>();
                 services.AddHostedService<AgentBootstrapper>();
                 services.AddTransient<PortfolioManager>();

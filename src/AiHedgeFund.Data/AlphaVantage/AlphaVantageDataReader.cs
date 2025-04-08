@@ -104,9 +104,15 @@ public class AlphaVantageDataReader : IDataReader
                 metrics = default;
                 return false;
             }
-            
-            var balanceReports = GetFilteredReports(balanceSheetData.QuarterlyReports, endDate, limit, r => r.FiscalDateEnding);
-            var incomeReports = GetFilteredReports(incomeStatementData.QuarterlyReports, endDate, 2, r => r.FiscalDateEnding);
+
+            var annualBalanceReports = GetFilteredReports(balanceSheetData.AnnualReports, endDate, limit, r => r.FiscalDateEnding);
+            var annualIncomeReports = GetFilteredReports(incomeStatementData.AnnualReports, endDate, limit, r => r.FiscalDateEnding);
+            var annualCashFlowReports = GetFilteredReports(cashFlowData.AnnualReports, endDate, limit, r => r.FiscalDateEnding);
+            var quarterlyCashFlowReports = GetFilteredReports(cashFlowData.QuarterlyReports, endDate, 4, r => r.FiscalDateEnding);
+            var quarterlyEarningsReports = GetFilteredReports(earningsData.QuarterlyEarnings, endDate, 4, r => r.FiscalDateEnding);
+
+            var balanceReports = GetFilteredReports(balanceSheetData.AnnualReports, endDate, limit, r => r.FiscalDateEnding);
+            var incomeReports = GetFilteredReports(incomeStatementData.AnnualReports, endDate, 2, r => r.FiscalDateEnding);
             var cashFlowReports = GetFilteredReports(cashFlowData.QuarterlyReports, endDate, limit, r => r.FiscalDateEnding);
             var earningsReports = GetFilteredReports(earningsData.QuarterlyEarnings, endDate, limit, r => r.FiscalDateEnding);
 
@@ -132,6 +138,7 @@ public class AlphaVantageDataReader : IDataReader
                     tmpMetrics.DebtToAssets = bs.TotalLiabilities / bs.TotalAssets;
                     tmpMetrics.BookValuePerShare = bs.TotalShareholderEquity / bs.CommonStockSharesOutstanding;
                     tmpMetrics.CommonStockSharesOutstanding = bs.CommonStockSharesOutstanding;
+                    tmpMetrics.GoodwillAndIntangibleAssets = bs.GoodwillAndIntangibleAssets;
                 }
 
                 if (i < incomeReports.Count)
@@ -142,6 +149,8 @@ public class AlphaVantageDataReader : IDataReader
                     tmpMetrics.GrossMargin = incomeReports[i].GrossMargin;
                     tmpMetrics.TotalRevenue = inc.TotalRevenue;
                     tmpMetrics.OperatingMargin = inc.OperatingMargin;
+                    if (TryCalculateRoic(inc, balanceReports[i], overviewData, out var roic))
+                        tmpMetrics.ReturnOnInvestedCapital = roic;
                 }
 
                 if (i < cashFlowReports.Count)
@@ -177,6 +186,67 @@ public class AlphaVantageDataReader : IDataReader
         metrics = internalMetrics;
         return true;
     }
+
+    public static bool TryCalculateRoic(IncomeStatementReport incomeReport, BalanceSheetReport balanceReport, CompanyOverview overview, out decimal roic)
+    {
+        roic = 0;
+
+        if (incomeReport == null || balanceReport == null)
+            return false;
+
+        if (!incomeReport.NetIncome.HasValue || !balanceReport.TotalShareholderEquity.HasValue)
+            return false;
+
+        decimal netIncome = incomeReport.NetIncome.Value;
+        const decimal fallbackTaxRate = 0.21m;
+        decimal taxRate = fallbackTaxRate;
+
+        decimal nopat = netIncome * (1 - taxRate);
+
+        decimal equity = balanceReport.TotalShareholderEquity.Value;
+        decimal shortTermDebt = balanceReport.ShortTermDebt ?? 0m;
+        decimal longTermDebt = balanceReport.LongTermDebt ?? 0m;
+
+        decimal interestBearingDebt = shortTermDebt + longTermDebt;
+        decimal investedCapital = equity + interestBearingDebt;
+
+        if (investedCapital <= 0)
+            return false;
+
+        roic = nopat / investedCapital;
+        return true;
+    }
+
+
+    //public static bool TryCalculateRoic(IncomeStatementReport incomeReport, BalanceSheetReport balanceReport, CompanyOverview overview, out decimal roic)
+    //{
+    //    roic = 0;
+
+    //    if (incomeReport == null || balanceReport == null)
+    //        return false;
+
+    //    if (!incomeReport.NetIncome.HasValue || !balanceReport.TotalShareholderEquity.HasValue)
+    //        return false;
+
+    //    decimal netIncome = incomeReport.NetIncome.Value;
+    //    const decimal fallbackTaxRate = 0.21m;
+    //    decimal taxRate = fallbackTaxRate;
+
+    //    decimal nopat = netIncome * (1 - taxRate);
+    //    decimal equity = balanceReport.TotalShareholderEquity.Value;
+    //    decimal debt = balanceReport.TotalLiabilities ?? 0m;
+    //    decimal? estimatedCash = null;
+    //    if (balanceReport.TotalCurrentAssets.HasValue && balanceReport.TotalLiabilities.HasValue)
+    //        estimatedCash = balanceReport.TotalCurrentAssets.Value * 0.2m; // assume 20% of current assets is cash
+    //    decimal cash = estimatedCash ?? 0m;
+    //    decimal investedCapital = equity + debt - cash;
+
+    //    if (investedCapital <= 0)
+    //        return false;
+
+    //    roic = nopat / investedCapital;
+    //    return true;
+    //}
 
     private static bool TryCalculatePayoutRatio(CashFlowReport? cashFlow, IncomeStatementReport? incomeStatement, out decimal payoutRatio)
     {

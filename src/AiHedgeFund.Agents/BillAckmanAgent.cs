@@ -13,9 +13,9 @@ namespace AiHedgeFund.Agents;
 public class BillAckmanAgent
 {
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
-    private readonly IChatter _chatter;
+    private readonly IHttpLib _chatter;
 
-    public BillAckmanAgent(IChatter chatter)
+    public BillAckmanAgent(IHttpLib chatter)
     {
         _chatter = chatter;
     }

@@ -9,17 +9,20 @@ public class AgentBootstrapper : IHostedService
     private readonly BenGrahamAgent _benGraham;
     private readonly CathieWoodAgent _cathieWood;
     private readonly BillAckmanAgent _billAckman;
+    private readonly CharlieMungerAgent _charlieMunger;
 
     public AgentBootstrapper(
         IAgentRegistry registry,
         BenGrahamAgent benGraham,
         CathieWoodAgent cathieWood,
-        BillAckmanAgent billAckman)
+        BillAckmanAgent billAckman,
+        CharlieMungerAgent charlieMunger)
     {
         _registry = registry;
         _benGraham = benGraham;
         _cathieWood = cathieWood;
         _billAckman = billAckman;
+        _charlieMunger = charlieMunger;
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -27,6 +30,7 @@ public class AgentBootstrapper : IHostedService
         _registry.Register("ben_graham", _benGraham.Run);
         _registry.Register("cathie_wood", _cathieWood.Run);
         _registry.Register("bill_ackman", _billAckman.Run);
+        _registry.Register("charlie_munger", _charlieMunger.Run);
         return Task.CompletedTask;
     }
 

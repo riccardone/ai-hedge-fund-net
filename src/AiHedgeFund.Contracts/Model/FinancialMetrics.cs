@@ -51,4 +51,5 @@ public class FinancialMetrics
     public decimal DividendsAndOtherCashDistributions { get; set; }
     public decimal FreeCashFlow => OperatingCashFlow - CapitalExpenditure;
     public decimal? CommonStockSharesOutstanding { get; set; }
+    public decimal? GoodwillAndIntangibleAssets { get; set; }
 }
