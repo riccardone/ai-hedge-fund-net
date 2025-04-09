@@ -1,7 +1,9 @@
 ﻿using AiHedgeFund.Contracts;
 using AiHedgeFund.Contracts.Model;
 using NLog;
+using System.Text.Json;
 using System.Text.RegularExpressions;
+using AiHedgeFund.Agents.Services;
 
 namespace AiHedgeFund.Agents;
 
@@ -12,11 +14,11 @@ namespace AiHedgeFund.Agents;
 public class CharlieMungerAgent
 {
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
-    private readonly IHttpLib _chatter;
+    private readonly IHttpLib _httpLib;
 
     public CharlieMungerAgent(IHttpLib chatter)
     {
-        _chatter = chatter;
+        _httpLib = chatter;
     }
 
     public IEnumerable<TradeSignal> Run(TradingWorkflowState state)
@@ -47,19 +49,21 @@ public class CharlieMungerAgent
             }
 
             var moatStrength = AnalyzeMoatStrength(metrics, lineItems);
-            var managementQuality = AnalyzeManagementQuality(metrics, null);
+            var managementQuality = AnalyzeManagementQuality(metrics, lineItems);
             var predictability = AnalyzePredictability(metrics, lineItems);
+            var companyNews = AnalyzeCompanyNews(state.CompanyNews[ticker].ToList());
             var valuation = AnalyzeValuation(metrics, marketCap);
 
             Logger.Info("{0} Moat Strength: {1}", ticker, string.Join("; ", moatStrength.Details));
             Logger.Info("{0} Management Quality: {1}", ticker, string.Join("; ", managementQuality.Details));
             Logger.Info("{0} Predictability: {1}", ticker, string.Join("; ", predictability.Details));
+            Logger.Info("{0} Company News: {1}", ticker, string.Join("; ", companyNews.Details));
             Logger.Info("{0} Valuation: {1}", ticker, string.Join("; ", valuation.Details));
 
-            var totalScore = moatStrength.Score + managementQuality.Score + valuation.Score + predictability.Score + valuation.Score;
-            const int maxScore = 15;
+            var totalScore = moatStrength.Score + managementQuality.Score + companyNews.Score + predictability.Score + valuation.Score;
+            const int maxScore = 50;
 
-            if(TryGenerateOutput(state, ticker, moatStrength, managementQuality, predictability, valuation, totalScore, maxScore, out TradeSignal tradeSignal))
+            if(TryGenerateOutput(state, ticker, moatStrength, managementQuality, predictability, companyNews, valuation, totalScore, maxScore, out TradeSignal tradeSignal))
                 signals.Add(tradeSignal);
 
             // TODO what if it is not generated
@@ -323,6 +327,7 @@ public class CharlieMungerAgent
     /// - Long-term focus
     /// </summary>
     /// <param name="metrics"></param>
+    /// <param name="lineItems"></param>
     /// <returns></returns>
     /// <exception cref="NotImplementedException"></exception>
     private FinancialAnalysisResult AnalyzeManagementQuality(IEnumerable<FinancialMetrics> metrics, IEnumerable<FinancialLineItem> lineItems)
@@ -353,10 +358,11 @@ public class CharlieMungerAgent
 
         // 1. Capital Allocation - FCF/Net Income Ratio
         var fcfs = ordered.Where(x => x.FreeCashFlow > 0).Select(x => x.FreeCashFlow).ToList();
+        var netIncomes = ordered.Where(x => x.NetIncome.HasValue).Select(x => x.NetIncome).ToList();
 
-        var netIncomes = items.Where(x => x.Extras.TryGetValue("net_income", out var n) && n is decimal)
-                              .Select(x => (decimal)x.Extras["net_income"])
-                              .ToList();
+        //var netIncomes = items.Where(x => x.Extras.TryGetValue("NetIncome", out var n) && n is decimal)
+        //                      .Select(x => (decimal)x.Extras["NetIncome"])
+        //                      .ToList();
 
         if (fcfs.Count > 0 && fcfs.Count == netIncomes.Count)
         {
@@ -364,7 +370,7 @@ public class CharlieMungerAgent
             for (int i = 0; i < fcfs.Count; i++)
             {
                 if (netIncomes[i] > 0)
-                    ratios.Add(fcfs[i] / netIncomes[i]);
+                    ratios.Add(fcfs[i] / netIncomes[i].Value);
             }
 
             if (ratios.Count > 0)
@@ -401,13 +407,8 @@ public class CharlieMungerAgent
         }
 
         // 2. Debt Management - D/E Ratio
-        var debts = items.Where(x => x.Extras.TryGetValue("total_debt", out var d) && d is decimal)
-                         .Select(x => (decimal)x.Extras["total_debt"])
-                         .ToList();
-
-        var equities = items.Where(x => x.Extras.TryGetValue("shareholders_equity", out var e) && e is decimal)
-                            .Select(x => (decimal)x.Extras["shareholders_equity"])
-                            .ToList();
+        var debts = ordered.Where(x => x.TotalDebt.HasValue).Select(x => x.TotalDebt).ToList();
+        var equities = ordered.Where(x => x.TotalShareholderEquity.HasValue).Select(x => x.TotalShareholderEquity).ToList();
 
         if (debts.Count > 0 && equities.Count > 0)
         {
@@ -439,12 +440,11 @@ public class CharlieMungerAgent
         }
 
         // 3. Cash Management
-        var cashes = items.Where(x => x.Extras.TryGetValue("cash_and_equivalents", out var c) && c is decimal)
-                          .Select(x => (decimal)x.Extras["cash_and_equivalents"])
-                          .ToList();
+        var cashes = ordered.Where(x => x.CashAndCashEquivalentsAtCarryingValue.HasValue)
+            .Select(x => x.CashAndCashEquivalentsAtCarryingValue).ToList();
 
-        var revenues = items.Where(x => x.Extras.TryGetValue("revenue", out var r) && r is decimal)
-                            .Select(x => (decimal)x.Extras["revenue"])
+        var revenues = items.Where(x => x.Extras.TryGetValue("TotalRevenue", out var r) && r is decimal)
+                            .Select(x => (decimal)x.Extras["TotalRevenue"])
                             .ToList();
 
         if (cashes.Count > 0 && revenues.Count > 0 && revenues[0] > 0)
@@ -517,9 +517,8 @@ public class CharlieMungerAgent
         //}
 
         // 5. Share Count Consistency
-        var shares = items.Where(x => x.Extras.TryGetValue("outstanding_shares", out var s) && s is decimal)
-                          .Select(x => (decimal)x.Extras["outstanding_shares"])
-                          .ToList();
+        var shares = ordered.Where(x => x.CommonStockSharesOutstanding.HasValue)
+            .Select(x => x.CommonStockSharesOutstanding).ToList();
 
         if (shares.Count >= 3)
         {
@@ -706,45 +705,259 @@ public class CharlieMungerAgent
 
     private static FinancialAnalysisResult AnalyzeValuation(IEnumerable<FinancialMetrics> metrics, decimal? marketCap)
     {
-        throw new NotImplementedException();
-    }
+        var result = new FinancialAnalysisResult();
 
-    private bool TryGenerateOutput(TradingWorkflowState state, string ticker,
-        FinancialAnalysisResult financialAnalysisResult, FinancialAnalysisResult businessQuality,
-        FinancialAnalysisResult financialDiscipline, FinancialAnalysisResult valuation, int totalScore, int maxScore,
-        out TradeSignal tradeSignal)
-    {
-        throw new NotImplementedException();
-    }
-
-    private bool TryExtractJson(string content, out string json)
-    {
-        json = string.Empty;
-
-        if (content.StartsWith("```"))
+        if (metrics == null || !metrics.Any() || marketCap is null)
         {
-            int start = content.IndexOf("{");
-            int end = content.LastIndexOf("}");
-            if (start >= 0 && end > start)
+            result.AddDetail("Insufficient data to perform valuation");
+            result.SetScore(0);
+            return result;
+        }
+
+        var fcfValues = metrics.Select(m => m.FreeCashFlow).Where(fcf => fcf > 0).Select(fcf => fcf).ToList();
+
+        if (fcfValues.Count < 3)
+        {
+            result.AddDetail("Insufficient free cash flow data for valuation");
+            result.SetScore(0);
+            return result;
+        }
+
+        int count = Math.Min(5, fcfValues.Count);
+        var normalizedFcf = fcfValues.Take(count).Average();
+
+        if (normalizedFcf <= 0)
+        {
+            result.AddDetail($"Negative or zero normalized FCF ({normalizedFcf}), cannot value");
+            result.SetScore(0);
+            return result;
+        }
+
+        var fcfYield = normalizedFcf / marketCap.Value;
+        decimal conservative = normalizedFcf * 10;
+        decimal reasonable = normalizedFcf * 15;
+        decimal optimistic = normalizedFcf * 20;
+
+        int score = 0;
+
+        if (fcfYield > 0.08m)
+        {
+            score += 4;
+            result.AddDetail($"Excellent value: {fcfYield:P1} FCF yield");
+        }
+        else if (fcfYield > 0.05m)
+        {
+            score += 3;
+            result.AddDetail($"Good value: {fcfYield:P1} FCF yield");
+        }
+        else if (fcfYield > 0.03m)
+        {
+            score += 1;
+            result.AddDetail($"Fair value: {fcfYield:P1} FCF yield");
+        }
+        else
+        {
+            result.AddDetail($"Expensive: Only {fcfYield:P1} FCF yield");
+        }
+
+        var upside = (reasonable - marketCap.Value) / marketCap.Value;
+
+        if (upside > 0.3m)
+        {
+            score += 3;
+            result.AddDetail($"Large margin of safety: {upside:P1} upside to reasonable value");
+        }
+        else if (upside > 0.1m)
+        {
+            score += 2;
+            result.AddDetail($"Moderate margin of safety: {upside:P1} upside to reasonable value");
+        }
+        else if (upside > -0.1m)
+        {
+            score += 1;
+            result.AddDetail($"Fair price: Within 10% of reasonable value ({upside:P1})");
+        }
+        else
+        {
+            result.AddDetail($"Expensive: {-upside:P1} premium to reasonable value");
+        }
+
+        // FCF growth trend
+        if (fcfValues.Count >= 3)
+        {
+            var recentAvg = fcfValues.Take(3).Average();
+            var olderAvg = fcfValues.Count >= 6
+                ? fcfValues.Skip(3).Take(3).Average()
+                : fcfValues.Last();
+
+            if (recentAvg > olderAvg * 1.2m)
             {
-                json = content[start..(end + 1)];
-                return true;
+                score += 3;
+                result.AddDetail("Growing FCF trend adds to intrinsic value");
+            }
+            else if (recentAvg > olderAvg)
+            {
+                score += 2;
+                result.AddDetail("Stable to growing FCF supports valuation");
+            }
+            else
+            {
+                result.AddDetail("Declining FCF trend is concerning");
             }
         }
 
-        var match = Regex.Match(content, "\\{[\\s\\S]*?\\}");
-        if (match.Success)
+        var finalScore = Math.Min(10, score);
+        result.SetScore(finalScore);
+
+        result.AddDetail($"Intrinsic value range: Conservative = {conservative:N0}, Reasonable = {reasonable:N0}, Optimistic = {optimistic:N0}");
+        result.AddDetail($"Normalized FCF: {normalizedFcf:N0}, FCF Yield: {fcfYield:P2}");
+
+        return result;
+    }
+
+    /// <summary>
+    /// Simple qualitative analysis of recent news.
+    /// Munger pays attention to significant news but doesn't overreact to short-term stories.
+    /// </summary>
+    /// <param name="newsSentiments"></param>
+    /// <returns></returns>
+    private FinancialAnalysisResult AnalyzeCompanyNews(IList<NewsSentiment> newsSentiments)
+    {
+        var result = new FinancialAnalysisResult();
+
+        if (newsSentiments == null || newsSentiments.Count == 0)
         {
-            json = match.Value;
-            return true;
+            result.AddDetail("No news sentiment data available");
+            result.SetScore(0);
+            return result;
         }
 
-        if (content.Trim().StartsWith("{") && content.Trim().EndsWith("}"))
+        var recentNews = newsSentiments
+            .Where(n => n.PublishedAt.HasValue && n.PublishedAt.Value > DateTime.UtcNow.AddDays(-14))
+            .ToList();
+
+        if (recentNews.Count == 0)
         {
-            json = content;
-            return true;
+            result.AddDetail("No recent news in the last 14 days");
+            result.SetScore(0);
+            return result;
         }
 
-        return false;
+        int positiveCount = 0, negativeCount = 0, neutralCount = 0;
+        decimal weightedScoreSum = 0;
+        decimal totalRelevance = 0;
+
+        foreach (var news in recentNews)
+        {
+            foreach (var ts in news.TickerSentiments)
+            {
+                if (ts.SentimentScore.HasValue && ts.RelevanceScore.HasValue)
+                {
+                    weightedScoreSum += ts.SentimentScore.Value * ts.RelevanceScore.Value;
+                    totalRelevance += ts.RelevanceScore.Value;
+
+                    if (ts.SentimentScore > 0.2m)
+                        positiveCount++;
+                    else if (ts.SentimentScore < -0.2m)
+                        negativeCount++;
+                    else
+                        neutralCount++;
+                }
+            }
+        }
+
+        if (totalRelevance == 0)
+        {
+            result.AddDetail("News articles have no relevance-weighted sentiment");
+            result.SetScore(0);
+            return result;
+        }
+
+        var averageSentiment = weightedScoreSum / totalRelevance;
+
+        result.AddDetail($"Analyzed {recentNews.Count} recent news items");
+        result.AddDetail($"Positive: {positiveCount}, Negative: {negativeCount}, Neutral: {neutralCount}");
+        result.AddDetail($"Relevance-weighted sentiment score: {averageSentiment:N2}");
+
+        // Apply simple scoring
+        if (averageSentiment > 0.3m)
+        {
+            result.AddDetail("Market sentiment is clearly positive");
+            result.SetScore(8);
+        }
+        else if (averageSentiment > 0.1m)
+        {
+            result.AddDetail("Market sentiment is modestly positive");
+            result.SetScore(6);
+        }
+        else if (averageSentiment > -0.1m)
+        {
+            result.AddDetail("Market sentiment is neutral");
+            result.SetScore(5);
+        }
+        else if (averageSentiment > -0.3m)
+        {
+            result.AddDetail("Market sentiment is modestly negative");
+            result.SetScore(3);
+        }
+        else
+        {
+            result.AddDetail("Market sentiment is clearly negative");
+            result.SetScore(1);
+        }
+
+        return result;
+    }
+
+    private bool TryGenerateOutput(TradingWorkflowState state, string ticker, FinancialAnalysisResult analysisResult,
+        FinancialAnalysisResult financialAnalysisResult, FinancialAnalysisResult businessQuality,
+        FinancialAnalysisResult companyNews, FinancialAnalysisResult valuation, int totalScore, int maxScore,
+        out TradeSignal tradeSignal)
+    {
+        tradeSignal = default!;
+
+        var systemMessage = @$"
+You are a Charlie Munger AI agent, making investment decisions using his principles:
+
+1. Focus on the quality and predictability of the business.
+2. Rely on mental models from multiple disciplines to analyze investments.
+3. Look for strong, durable competitive advantages (moats).
+4. Emphasize long-term thinking and patience.
+5. Value management integrity and competence.
+6. Prioritize businesses with high returns on invested capital.
+7. Pay a fair price for wonderful businesses.
+8. Never overpay, always demand a margin of safety.
+9. Avoid complexity and businesses you don't understand.
+10. ""Invert, always invert"" - focus on avoiding stupidity rather than seeking brilliance.
+11. Consider the company news sentiment analysis
+
+Rules:
+- Praise businesses with predictable, consistent operations and cash flows.
+- Value businesses with high ROIC and pricing power.
+- Prefer simple businesses with understandable economics.
+- Admire management with skin in the game and shareholder-friendly capital allocation.
+- Focus on long-term economics rather than short-term metrics.
+- Be skeptical of businesses with rapidly changing dynamics or excessive share dilution.
+- Avoid excessive leverage or financial engineering.
+- Provide a rational, data-driven recommendation (bullish, bearish, or neutral).";
+
+        return LlmTradeSignalGenerator.TryGenerateSignal(
+            _httpLib,
+            "chat/completions",
+            ticker,
+            systemMessage,
+            new
+            {
+                score = totalScore,
+                max_score = maxScore,
+                Overall = analysisResult,
+                Financials = financialAnalysisResult,
+                BusinessQuality = businessQuality,
+                CompanyNews = companyNews,
+                Valuation = valuation
+            },
+            agentName: "Charlie Munger",
+            out tradeSignal
+        );
     }
 }

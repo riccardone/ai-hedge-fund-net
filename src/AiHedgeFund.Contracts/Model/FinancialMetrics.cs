@@ -52,4 +52,8 @@ public class FinancialMetrics
     public decimal FreeCashFlow => OperatingCashFlow - CapitalExpenditure;
     public decimal? CommonStockSharesOutstanding { get; set; }
     public decimal? GoodwillAndIntangibleAssets { get; set; }
+    public decimal? NetIncome { get; set; }
+    public decimal? TotalDebt { get; set; }
+    public decimal? TotalShareholderEquity { get; set; }
+    public decimal? CashAndCashEquivalentsAtCarryingValue { get; set; }
 }

@@ -3,6 +3,7 @@ using AiHedgeFund.Contracts.Model;
 using NLog;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using AiHedgeFund.Agents.Services;
 
 namespace AiHedgeFund.Agents;
 
@@ -16,11 +17,11 @@ namespace AiHedgeFund.Agents;
 public class CathieWoodAgent
 {
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
-    private readonly IHttpLib _chatter;
+    private readonly IHttpLib _httpLib;
 
     public CathieWoodAgent(IHttpLib chatter)
     {
-        _chatter = chatter;
+        _httpLib = chatter;
     }
 
     public IEnumerable<TradeSignal> Run(TradingWorkflowState state)
@@ -292,103 +293,21 @@ Rules:
 - Use a growth-biased valuation approach.
 - Provide a data-driven recommendation (bullish, bearish, or neutral).";
 
-        var userMessage = @$"Based on the following analysis, create a Cathie Wood-style investment signal:
-
-            Analysis Data for {ticker}:
-            {JsonSerializer.Serialize(new
-        {
-            score = totalScore,
-            max_score = maxScore,
-            disruptive_analysis = disruptive,
-            innovation_analysis = innovation,
-            valuation_analysis = valuation
-        }, new JsonSerializerOptions { WriteIndented = true })}
-
-            Return JSON exactly in this format:
-            {{
-              ""signal"": ""bullish"" or ""bearish"" or ""neutral"",
-              ""confidence"": float (0-100),
-              ""reasoning"": ""string""
-            }}";
-
-        var payload = new
-        {
-            model = state.ModelName,
-            messages = new[]
+        return LlmTradeSignalGenerator.TryGenerateSignal(
+            _httpLib,
+            "chat/completions",
+            ticker,
+            systemMessage,
+            new
             {
-                new { role = "system", content = systemMessage },
-                new { role = "user", content = userMessage }
+                score = totalScore,
+                max_score = maxScore,
+                disruptive_analysis = disruptive,
+                innovation_analysis = innovation,
+                valuation_analysis = valuation
             },
-            temperature = 0.2
-        };
-
-        var json = JsonSerializer.Serialize(payload);
-
-        if (!_chatter.TryPost("chat/completions", json, out var response))
-        {
-            tradeSignal = new TradeSignal(ticker, "neutral", 0, "Error posting to LLM. Defaulting to neutral.");
-            return false;
-        }
-
-        try
-        {
-            using var doc = JsonDocument.Parse(response);
-            var content = doc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content")
-                .GetString();
-            if (string.IsNullOrEmpty(content))
-            {
-                tradeSignal = new TradeSignal(ticker, "neutral", 0, "Empty response from LLM. Defaulting to neutral.");
-                return false;
-            }
-
-            if (!TryExtractJson(content, out var cleanedJson))
-            {
-                tradeSignal = new TradeSignal(ticker, "neutral", 0, "Failed to extract valid JSON from LLM response.");
-                return false;
-            }
-
-            var result = JsonSerializer.Deserialize<TradeSignal>(cleanedJson,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            result.SetTicker(ticker);
-            tradeSignal = result;
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Logger.Error(ex, "Failed to deserialize LLM output for {0}", ticker);
-            tradeSignal = new TradeSignal(ticker, "neutral", 0, "Failed to parse LLM response. Defaulting to neutral.");
-            return false;
-        }
-    }
-
-    private bool TryExtractJson(string content, out string json)
-    {
-        json = string.Empty;
-
-        if (content.StartsWith("```"))
-        {
-            int start = content.IndexOf("{");
-            int end = content.LastIndexOf("}");
-            if (start >= 0 && end > start)
-            {
-                json = content[start..(end + 1)];
-                return true;
-            }
-        }
-
-        var match = Regex.Match(content, "\\{[\\s\\S]*?\\}");
-        if (match.Success)
-        {
-            json = match.Value;
-            return true;
-        }
-
-        if (content.Trim().StartsWith("{") && content.Trim().EndsWith("}"))
-        {
-            json = content;
-            return true;
-        }
-
-        return false;
+            agentName: "Cathie Wood",
+            out tradeSignal
+        );
     }
 }

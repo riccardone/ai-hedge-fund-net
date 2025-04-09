@@ -1,4 +1,5 @@
 ﻿using AiHedgeFund.Contracts;
+using AiHedgeFund.Contracts.Model;
 using NLog;
 
 namespace AiHedgeFund.Agents.Services;
@@ -54,6 +55,12 @@ public class TradingInitializer
                 Logger.Error($"I can't retrieve prices for {ticker}");
                 continue;
             }
+            if (!_dataReader.TryGetCompanyNews(ticker, out var companyNews))
+            {
+                Logger.Error($"I can't retrieve company news data for {ticker}");
+                continue;
+            }
+            state.CompanyNews.Add(ticker, companyNews);
             state.Prices.Add(ticker, prices);
         }
 

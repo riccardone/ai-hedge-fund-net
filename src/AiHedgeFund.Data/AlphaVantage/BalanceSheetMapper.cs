@@ -29,6 +29,7 @@ public static class BalanceSheetMapper
             LongTermDebt = ParseLong(raw.LongTermDebt),
             Goodwill = ParseLong(raw.Goodwill),
             IntangibleAssets = ParseLong(raw.IntangibleAssets),
+            CashAndCashEquivalentsAtCarryingValue = ParseLong(raw.CashAndCashEquivalentsAtCarryingValue)
         };
     }
 

@@ -4,6 +4,7 @@ namespace AiHedgeFund.Contracts;
 
 public class TradingWorkflowState
 {
+    public IDictionary<string, IEnumerable<NewsSentiment>> CompanyNews { get; set; } = new Dictionary<string, IEnumerable<NewsSentiment>>();
     public IDictionary<string, IEnumerable<FinancialMetrics>> FinancialMetrics { get; set; } = new Dictionary<string, IEnumerable<FinancialMetrics>>();
     public IDictionary<string, IEnumerable<FinancialLineItem>> FinancialLineItems { get; set; } = new Dictionary<string, IEnumerable<FinancialLineItem>>();
     public IDictionary<string, IEnumerable<Price>> Prices { get; set; } = new Dictionary<string, IEnumerable<Price>>();

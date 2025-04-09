@@ -139,6 +139,11 @@ public class AlphaVantageDataReader : IDataReader
                     tmpMetrics.BookValuePerShare = bs.TotalShareholderEquity / bs.CommonStockSharesOutstanding;
                     tmpMetrics.CommonStockSharesOutstanding = bs.CommonStockSharesOutstanding;
                     tmpMetrics.GoodwillAndIntangibleAssets = bs.GoodwillAndIntangibleAssets;
+                    tmpMetrics.TotalDebt = bs is { LongTermDebt: not null, ShortTermDebt: not null }
+                        ? bs.LongTermDebt + bs.ShortTermDebt
+                        : bs.LongTermDebt ?? 0;
+                    tmpMetrics.TotalShareholderEquity = bs.TotalShareholderEquity;
+                    tmpMetrics.CashAndCashEquivalentsAtCarryingValue = bs.CashAndCashEquivalentsAtCarryingValue;
                 }
 
                 if (i < incomeReports.Count)
@@ -165,6 +170,7 @@ public class AlphaVantageDataReader : IDataReader
                     tmpMetrics.CapitalExpenditure = cf.CapitalExpenditures;
                     tmpMetrics.DividendsAndOtherCashDistributions =
                         cf.DividendPayoutCommonStock + cf.DividendPayoutPreferredStock;
+                    tmpMetrics.NetIncome = cf.NetIncome;
                 }
 
                 if (i < earningsReports.Count)
@@ -281,6 +287,20 @@ public class AlphaVantageDataReader : IDataReader
         }
 
         financialLineItems = internalResults;
+        return true;
+    }
+
+    public bool TryGetCompanyNews(string ticker, out IEnumerable<NewsSentiment>? newsSentiments)
+    {
+        if (!_dataFetcher.TryLoadOrFetch<NewsSentimentRaw, List<NewsSentiment>>($"NEWS_SENTIMENT:{ticker}",
+                $"query?function=NEWS_SENTIMENT&symbol={ticker}", NewsSentimentMapper.Map, out var newsSentimentData))
+        {
+            Logger.Error($"I can't retrieve {nameof(newsSentimentData)}");
+            newsSentiments = default;
+            return false;
+        }
+
+        newsSentiments = newsSentimentData?.AsEnumerable();
         return true;
     }
 
