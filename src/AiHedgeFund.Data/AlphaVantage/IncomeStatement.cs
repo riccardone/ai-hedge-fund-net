@@ -35,6 +35,7 @@ public class IncomeStatementReport
             ["TotalRevenue"] = TotalRevenue,
             ["GrossProfit"] = GrossProfit,
             ["OperatingIncome"] = OperatingIncome,
+            ["OperatingMargin"] = OperatingMargin,
             ["ResearchAndDevelopment"] = ResearchAndDevelopment,
             ["SellingGeneralAndAdministrative"] = SellingGeneralAndAdministrative,
             ["InterestExpense"] = InterestExpense,
