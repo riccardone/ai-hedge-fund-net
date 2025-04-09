@@ -65,8 +65,8 @@ public class CharlieMungerAgent
 
             if(TryGenerateOutput(state, ticker, moatStrength, managementQuality, predictability, companyNews, valuation, totalScore, maxScore, out TradeSignal tradeSignal))
                 signals.Add(tradeSignal);
-
-            // TODO what if it is not generated
+            else
+                Logger.Error($"Error while running {nameof(CharlieMungerAgent)}");
         }
 
         return signals;

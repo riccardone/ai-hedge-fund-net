@@ -1,5 +1,4 @@
-﻿using System.Text.Json;
-using System.Text.RegularExpressions;
+﻿using AiHedgeFund.Agents.Services;
 using AiHedgeFund.Contracts;
 using AiHedgeFund.Contracts.Model;
 using NLog;
@@ -16,11 +15,11 @@ namespace AiHedgeFund.Agents;
 public class BenGrahamAgent
 {
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
-    private readonly IHttpLib _chatter;
+    private readonly IHttpLib _httpLib;
 
-    public BenGrahamAgent(IHttpLib chatter)
+    public BenGrahamAgent(IHttpLib httpLib)
     {
-        _chatter = chatter;
+        _httpLib = httpLib;
     }
 
     public IEnumerable<TradeSignal> Run(TradingWorkflowState state)
@@ -44,7 +43,10 @@ public class BenGrahamAgent
             Logger.Info("{0} Financial Strength: {1}", ticker, string.Join("; ", strength.Details));
             Logger.Info("{0} Valuation: {1}", ticker, string.Join("; ", valuation.Details));
 
-            signals.Add(GenerateOutput(state, ticker));
+            if (TryGenerateOutput(state, ticker, out TradeSignal tradeSignal))
+                signals.Add(tradeSignal);
+            else
+                Logger.Error($"Error while running {nameof(BenGrahamAgent)}");
         }
 
         return signals;
@@ -254,24 +256,26 @@ public class BenGrahamAgent
         return false;
     }
 
-    private TradeSignal GenerateOutput(TradingWorkflowState state, string ticker)
+    private bool TryGenerateOutput(TradingWorkflowState state, string ticker, out TradeSignal tradeSignal)
     {
         if (string.IsNullOrWhiteSpace(ticker))
         {
-            return new TradeSignal(ticker, "neutral", 0, "No ticker provided.");
+            tradeSignal = new TradeSignal(ticker, "neutral", 0, "No ticker provided.");
+            return false;
         }
 
         if (!state.FinancialMetrics.Any())
         {
-            return new TradeSignal(ticker, "neutral", 0, "No metrics provided.");
+            tradeSignal = new TradeSignal(ticker, "neutral", 0, "No metrics provided.");
+            return false;
         }
 
         if (!state.FinancialLineItems.Any())
         {
-            return new TradeSignal(ticker, "neutral", 0, "No financial data provided.");
+            tradeSignal = new TradeSignal(ticker, "neutral", 0, "No financial data provided.");
+            return false;
         }
 
-        //var ticker = tickers[0]; // Assuming single ticker processing, adjust if needed.
         var analysisData = new Dictionary<string, object>
         {
             { "FinancialMetrics", state.FinancialMetrics },
@@ -292,89 +296,14 @@ public class BenGrahamAgent
 
             Return a rational recommendation: bullish, bearish, or neutral, with a confidence level (0-100) and concise reasoning.";
 
-        var userMessage = @$"Based on the following analysis, create a Graham-style investment signal:
-
-            Analysis Data for {ticker}:
-            {JsonSerializer.Serialize(analysisData)}
-
-            Return JSON exactly in this format:
-            {{
-              ""signal"": ""bullish"" or ""bearish"" or ""neutral"",
-              ""confidence"": float (0-100),
-              ""reasoning"": ""string""
-            }}";
-
-        var payload = new
-        {
-            model = state.ModelName,
-            messages = new[]
-            {
-                new { role = "system", content = systemMessage },
-                new { role = "user", content = userMessage }
-            },
-            temperature = 0.2
-        };
-
-        var requestContent = JsonSerializer.Serialize(payload);
-
-        if (!_chatter.TryPost("chat/completions", requestContent, out string response))
-        {
-            return new TradeSignal(ticker, "neutral", 0,
-                $"Error generating analysis ({response}). Defaulting to neutral.");
-        }
-
-        using var doc = JsonDocument.Parse(response);
-        var content = doc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString();
-
-        if (string.IsNullOrEmpty(content))
-        {
-            return new TradeSignal(ticker, "neutral", 0, "Error processing analysis; defaulting to neutral.");
-        }
-
-        try
-        {
-            if (!TryExtractJson(content, out var cleanedJson))
-                return new TradeSignal(ticker, "neutral", 0, "Empty result from AI. Defaulting to neutral.");
-            var result = JsonSerializer.Deserialize<TradeSignal>(cleanedJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            result.SetTicker(ticker);
-            return result;
-
-        }
-        catch (Exception ex)
-        {
-            Logger.Error($"Error while {nameof(GenerateOutput)} {ex.GetBaseException().Message}");
-            return new TradeSignal(ticker, "neutral", 0, "Failed to parse AI response. Defaulting to neutral.");
-        }
-    }
-
-    private bool TryExtractJson(string content, out string json)
-    {
-        json = string.Empty;
-
-        if (content.StartsWith("```"))
-        {
-            int start = content.IndexOf("{");
-            int end = content.LastIndexOf("}");
-            if (start >= 0 && end > start)
-            {
-                json = content[start..(end + 1)];
-                return true;
-            }
-        }
-
-        var match = Regex.Match(content, @"\{[\s\S]*?\}");
-        if (match.Success)
-        {
-            json = match.Value;
-            return true;
-        }
-
-        if (content.Trim().StartsWith("{") && content.Trim().EndsWith("}"))
-        {
-            json = content;
-            return true;
-        }
-
-        return false;
+        return LlmTradeSignalGenerator.TryGenerateSignal(
+            _httpLib,
+            "chat/completions",
+            ticker,
+            systemMessage,
+            analysisData,
+            agentName: "Ben Graham",
+            out tradeSignal
+        );
     }
 }

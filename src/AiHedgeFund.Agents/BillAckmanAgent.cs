@@ -1,8 +1,7 @@
-﻿using AiHedgeFund.Contracts;
+﻿using AiHedgeFund.Agents.Services;
+using AiHedgeFund.Contracts;
 using AiHedgeFund.Contracts.Model;
 using NLog;
-using System.Text.Json;
-using System.Text.RegularExpressions;
 
 namespace AiHedgeFund.Agents;
 
@@ -13,11 +12,11 @@ namespace AiHedgeFund.Agents;
 public class BillAckmanAgent
 {
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
-    private readonly IHttpLib _chatter;
+    private readonly IHttpLib _httpLib;
 
-    public BillAckmanAgent(IHttpLib chatter)
+    public BillAckmanAgent(IHttpLib httpLib)
     {
-        _chatter = chatter;
+        _httpLib = httpLib;
     }
 
     public IEnumerable<TradeSignal> Run(TradingWorkflowState state)
@@ -58,15 +57,12 @@ public class BillAckmanAgent
             var totalScore = businessQuality.Score + financialDiscipline.Score + valuation.Score;
             const int maxScore = 15;
 
-            if (TryGenerateOutput(state, ticker, businessQuality, financialDiscipline, valuation, totalScore, maxScore, out TradeSignal tradeSignal))
+            if (TryGenerateOutput(ticker, businessQuality, financialDiscipline, valuation, totalScore, maxScore, out TradeSignal tradeSignal))
             {
                 signals.Add(tradeSignal);
             }
             else
-            {
-                var signal = GenerateOutputWithoutLLM(totalScore, maxScore, businessQuality, financialDiscipline, valuation, out var reasoning, out var confidence);
-                signals.Add(new TradeSignal(ticker, signal, confidence, reasoning));
-            }
+                Logger.Error($"Error while running {nameof(BillAckmanAgent)}");
         }
 
         return signals;
@@ -359,49 +355,13 @@ public class BillAckmanAgent
         result.AddDetail($"Terminal Value: {terminalValue:N0}");
         result.AddDetail($"Intrinsic Value: {intrinsicValue:N0}");
 
-
         return new FinancialAnalysisResult(result.Score, result.Details, maxScore);
     }
 
-    private string GenerateOutputWithoutLLM(int totalScore, int maxScore, FinancialAnalysisResult businessQuality,
-        FinancialAnalysisResult financialDiscipline, FinancialAnalysisResult valuation, out string reasoning,
-        out decimal confidence)
-    {
-        string signal;
-        var details = new List<string>();
-
-        if (totalScore >= 0.7 * maxScore)
-        {
-            signal = "bullish";
-            confidence = 90;
-        }
-        else if (totalScore <= 0.3 * maxScore)
-        {
-            signal = "bearish";
-            confidence = 75;
-        }
-        else
-        {
-            signal = "neutral";
-            confidence = 60;
-        }
-
-        details.Add($"Total score: {totalScore}/{maxScore}");
-        details.Add($"Business Quality: {businessQuality.Score}/{businessQuality.MaxScore}");
-        details.Add($"Financial Discipline: {financialDiscipline.Score}/{financialDiscipline.MaxScore}");
-        details.Add($"Valuation: {valuation.Score}/{valuation.MaxScore}");
-
-        reasoning = string.Join("; ", details);
-        return signal;
-    }
-
-
-    private bool TryGenerateOutput(TradingWorkflowState state, string ticker, FinancialAnalysisResult businessQuality,
+    private bool TryGenerateOutput(string ticker, FinancialAnalysisResult businessQuality,
         FinancialAnalysisResult financialDiscipline, FinancialAnalysisResult valuation, int totalScore, int maxScore,
         out TradeSignal tradeSignal)
     {
-        tradeSignal = null;
-
         var systemMessage = """
         You are a Bill Ackman AI agent, making investment decisions using his principles:
 
@@ -431,98 +391,14 @@ public class BillAckmanAgent
             Valuation = valuation.Details
         };
 
-        var humanMessage = @$"
-        Based on the following analysis, create an Ackman-style investment signal.
-
-        Analysis Data for {ticker}:
-        {JsonSerializer.Serialize(analysisData, new JsonSerializerOptions { WriteIndented = true })}
-
-            Return JSON exactly in this format:
-            {{
-              ""signal"": ""bullish"" or ""bearish"" or ""neutral"",
-              ""confidence"": float (0-100),
-              ""reasoning"": ""string""
-            }}
-        ";
-
-        var payload = new
-        {
-            model = state.ModelName,
-            messages = new[]
-            {
-                new { role = "system", content = systemMessage },
-                new { role = "user", content = humanMessage }
-            },
-            temperature = 0.2
-        };
-
-        var json = JsonSerializer.Serialize(payload);
-
-        if (!_chatter.TryPost("chat/completions", json, out var response))
-        {
-            tradeSignal = new TradeSignal(ticker, "neutral", 0, "Error posting to LLM. Defaulting to neutral.");
-            return false;
-        }
-
-        try
-        {
-            using var doc = JsonDocument.Parse(response);
-            var content = doc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content")
-                .GetString();
-            if (string.IsNullOrEmpty(content))
-            {
-                tradeSignal = new TradeSignal(ticker, "neutral", 0, "Empty response from LLM. Defaulting to neutral.");
-                return false;
-            }
-
-            if (!TryExtractJson(content, out var cleanedJson))
-            {
-                tradeSignal = new TradeSignal(ticker, "neutral", 0, "Failed to extract valid JSON from LLM response.");
-                return false;
-            }
-
-            var result = JsonSerializer.Deserialize<TradeSignal>(cleanedJson,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            result.SetTicker(ticker);
-            tradeSignal = result;
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Logger.Error(ex, "Failed to deserialize LLM output for {0}", ticker);
-            tradeSignal = new TradeSignal(ticker, "neutral", 0, "Failed to parse LLM response. Defaulting to neutral.");
-            return false;
-        }
-    }
-
-    private bool TryExtractJson(string content, out string json)
-    {
-        json = string.Empty;
-
-        if (content.StartsWith("```"))
-        {
-            int start = content.IndexOf("{");
-            int end = content.LastIndexOf("}");
-            if (start >= 0 && end > start)
-            {
-                json = content[start..(end + 1)];
-                return true;
-            }
-        }
-
-        var match = Regex.Match(content, "\\{[\\s\\S]*?\\}");
-        if (match.Success)
-        {
-            json = match.Value;
-            return true;
-        }
-
-        if (content.Trim().StartsWith("{") && content.Trim().EndsWith("}"))
-        {
-            json = content;
-            return true;
-        }
-
-        return false;
+        return LlmTradeSignalGenerator.TryGenerateSignal(
+            _httpLib,
+            "chat/completions",
+            ticker,
+            systemMessage,
+            analysisData,
+            agentName: "Bill Ackman",
+            out tradeSignal
+        );
     }
 }

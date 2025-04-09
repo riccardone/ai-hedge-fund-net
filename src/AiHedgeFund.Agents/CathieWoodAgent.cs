@@ -1,8 +1,6 @@
 ﻿using AiHedgeFund.Contracts;
 using AiHedgeFund.Contracts.Model;
 using NLog;
-using System.Text.Json;
-using System.Text.RegularExpressions;
 using AiHedgeFund.Agents.Services;
 
 namespace AiHedgeFund.Agents;
@@ -67,10 +65,7 @@ public class CathieWoodAgent
                 signals.Add(tradeSignal);
             }
             else
-            {
-                var signal = GenerateOutputWithoutLLM(totalScore, maxScore, disruptive, innovation, valuation, out var reasoning, out var confidence);
-                signals.Add(new TradeSignal(ticker, signal, confidence, reasoning));
-            }
+                Logger.Error($"Error while running {nameof(CathieWoodAgent)}");
         }
 
         return signals;
@@ -252,26 +247,11 @@ public class CathieWoodAgent
         return new AnalysisResult { Score = score, Details = details };
     }
 
+    // TODO remove this class and use financialresult
     private class AnalysisResult
     {
         public decimal Score { get; set; }
         public string Details { get; set; } = string.Empty;
-    }
-
-    private static string GenerateOutputWithoutLLM(decimal totalScore, int maxScore, AnalysisResult disruptive,
-        AnalysisResult innovation, AnalysisResult valuation, out string reasoning, out decimal confidence)
-    {
-        string signal;
-        if (totalScore >= 0.7m * maxScore)
-            signal = "bullish";
-        else if (totalScore <= 0.3m * maxScore)
-            signal = "bearish";
-        else
-            signal = "neutral";
-
-        reasoning = $"Disruptive: {disruptive.Details}; Innovation: {innovation.Details}; Valuation: {valuation.Details}";
-        confidence = Math.Round((totalScore / maxScore) * 100, 2);
-        return signal;
     }
 
     private bool TryGenerateOutput(TradingWorkflowState state, string ticker, AnalysisResult disruptive,
