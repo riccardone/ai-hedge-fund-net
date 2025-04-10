@@ -19,3 +19,5 @@ You can run the program specifying one or more agent and one or more stock.
 ```
 > AiHedgeFund.Console --agent cathie_wood ben_graham --tickers MSFT AAPL
 ```
+# Cache
+When you run the program please remember that all the financial data are only retrieved from the remote api once. After that all the data are serialized and saved on file and cached in memory. Next time you re-run the program for the same tickers the data will be read from disk. To force a refresh you have to manually delete the data folder that is automatically created in the same folder of the program. I will add soon a parameter to force a refresh
