@@ -50,7 +50,7 @@ namespace AiHedgeFund.Tests
                 Tickers = new List<string> { "AAPL" },
                 FinancialLineItems = new Dictionary<string, IEnumerable<FinancialLineItem>> { { "AAPL", _lineItems } },
                 FinancialMetrics = new Dictionary<string, IEnumerable<FinancialMetrics>>(),
-                InitialCash = 100000,
+                //InitialCash = 100000,
                 TradeDecisions = new Dictionary<string, TradeDecision?>()
             };
         }

@@ -2,7 +2,6 @@
 using AiHedgeFund.Contracts;
 using AiHedgeFund.Contracts.Model;
 using NLog;
-using System.Diagnostics;
 
 namespace AiHedgeFund.Agents;
 
@@ -50,12 +49,6 @@ public class StanleyDruckenmillerAgent
             var insiderActivity = AnalyzeInsiderActivity(metrics);
             var valuation = AnalyzeValuation(metrics, lineItems, marketCap);
 
-            Logger.Info("{0} Growth and Momentum: {1}", ticker, string.Join("; ", growthMomentum.Details));
-            Logger.Info("{0} Risk Reward: {1}", ticker, string.Join("; ", riskReward.Details));
-            Logger.Info("{0} Valuation: {1}", ticker, string.Join("; ", valuation.Details));
-            Logger.Info("{0} Sentiment: {1}", ticker, string.Join("; ", sentiment.Details));
-            Logger.Info("{0} Insider Activity: {1}", ticker, string.Join("; ", insiderActivity.Details));
-
             // Weighted total score as per Druckenmiller’s method
             var totalScore =
                 growthMomentum.Score * 0.35 +
@@ -65,6 +58,21 @@ public class StanleyDruckenmillerAgent
                 insiderActivity.Score * 0.10;
 
             const int maxScore = 10;
+
+            string signal;
+            if (totalScore >= 0.7 * maxScore)
+                signal = "bullish";
+            else if (totalScore <= 0.3 * maxScore)
+                signal = "bearish";
+            else
+                signal = "neutral";
+
+            Logger.Info($"{ticker} Growth and Momentum {growthMomentum.Score}/{growthMomentum.MaxScore}: {string.Join("; ", growthMomentum.Details)}");
+            Logger.Info($"{ticker} Risk Reward {riskReward.Score}/{riskReward.MaxScore}: {string.Join("; ", riskReward.Details)}");
+            Logger.Info($"{ticker} Sentiment {sentiment.Score}/{sentiment.MaxScore}: {string.Join("; ", sentiment.Details)}");
+            Logger.Info($"{ticker} Insider Activity {insiderActivity.Score}/{insiderActivity.MaxScore}: {string.Join("; ", insiderActivity.Details)}");
+            Logger.Info($"{ticker} Valuation {valuation.Score}/{valuation.MaxScore}: {string.Join("; ", valuation.Details)}");
+            Logger.Info($"{ticker} Signal {signal}");
 
             if (TryGenerateOutput(ticker, growthMomentum, riskReward, valuation, sentiment, insiderActivity, totalScore, maxScore, out var tradeSignal))
                 signals.Add(tradeSignal);
@@ -512,7 +520,7 @@ Rules:
 - Watch out for high leverage or extreme volatility that threatens capital.
 - Output a JSON object with signal, confidence, and a reasoning string.";
 
-        var input = new
+        var analysisData = new
         {
             score = totalScore,
             max_score = maxScore,
@@ -528,7 +536,7 @@ Rules:
             endpoint: "chat/completions",
             ticker: ticker,
             systemMessage: systemMessage,
-            analysisData: input,
+            analysisData: analysisData,
             agentName: "Stanley Druckenmiller",
             out tradeSignal
         );

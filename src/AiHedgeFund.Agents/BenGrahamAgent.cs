@@ -39,11 +39,23 @@ public class BenGrahamAgent
             var strength = AnalyzeFinancialStrength(state, ticker);
             var valuation = AnalyzeValuation(state, ticker);
 
-            Logger.Info("{0} Earnings Stability: {1}", ticker, string.Join("; ", earnings.Details));
-            Logger.Info("{0} Financial Strength: {1}", ticker, string.Join("; ", strength.Details));
-            Logger.Info("{0} Valuation: {1}", ticker, string.Join("; ", valuation.Details));
+            var totalScore = earnings.Score + strength.Score + valuation.Score;
+            var maxScore = Math.Max(1, earnings.MaxScore + strength.MaxScore + valuation.MaxScore);
 
-            if (TryGenerateOutput(state, ticker, out TradeSignal tradeSignal))
+            string signal;
+            if (totalScore >= 0.7 * maxScore)
+                signal = "bullish";
+            else if (totalScore <= 0.3 * maxScore)
+                signal = "bearish";
+            else
+                signal = "neutral";
+
+            Logger.Info($"{ticker} Earnings Stability {earnings.Score}/{earnings.MaxScore}: {string.Join("; ", earnings.Details)}");
+            Logger.Info($"{ticker} Financial Strength {strength.Score}/{strength.MaxScore}: {string.Join("; ", strength.Details)}");
+            Logger.Info($"{ticker} Valuation  {valuation.Score}/{valuation.MaxScore}: {string.Join("; ", valuation.Details)}");
+            Logger.Info($"{ticker} Signal {signal}");
+
+            if (TryGenerateOutput(ticker, totalScore, maxScore, earnings, strength, valuation, out TradeSignal tradeSignal))
                 signals.Add(tradeSignal);
             else
                 Logger.Error($"Error while running {nameof(BenGrahamAgent)}");
@@ -75,13 +87,15 @@ public class BenGrahamAgent
         }
 
         // Determine threshold from risk level
-        double growthThreshold = state.RiskLevel?.ToLower() switch
-        {
-            "low" => 0.80,
-            "medium" => 0.70,
-            "high" => 0.60,
-            _ => 0.70 // default to medium
-        };
+        double growthThreshold = 0.70;
+        // TODO
+        //double growthThreshold = state.RiskLevel?.ToLower() switch
+        //{
+        //    "low" => 0.80,
+        //    "medium" => 0.70,
+        //    "high" => 0.60,
+        //    _ => 0.70 // default to medium
+        //};
 
         // EPS positivity
         int positiveYears = epsValues.Count(e => e > 0);
@@ -256,36 +270,14 @@ public class BenGrahamAgent
         return false;
     }
 
-    private bool TryGenerateOutput(TradingWorkflowState state, string ticker, out TradeSignal tradeSignal)
+    private bool TryGenerateOutput(string ticker, int totalScore, int maxScore, FinancialAnalysisResult earnings,
+        FinancialAnalysisResult strength, FinancialAnalysisResult valuation, out TradeSignal tradeSignal)
     {
         if (string.IsNullOrWhiteSpace(ticker))
         {
             tradeSignal = new TradeSignal(ticker, "neutral", 0, "No ticker provided.");
             return false;
         }
-
-        if (!state.FinancialMetrics.Any())
-        {
-            tradeSignal = new TradeSignal(ticker, "neutral", 0, "No metrics provided.");
-            return false;
-        }
-
-        if (!state.FinancialLineItems.Any())
-        {
-            tradeSignal = new TradeSignal(ticker, "neutral", 0, "No financial data provided.");
-            return false;
-        }
-
-        var analysisData = new Dictionary<string, object>
-        {
-            { "FinancialMetrics", state.FinancialMetrics },
-            { "FinancialLineItems", state.FinancialLineItems },
-            { "StartDate", state.StartDate },
-            { "EndDate", state.EndDate },
-            { "InitialCash", state.Portfolio.Cash },
-            { "MarginRequirement", state.MarginRequirement },
-            { "Portfolio", state.Portfolio }
-        };
 
         var systemMessage = @"You are a Benjamin Graham AI agent, making investment decisions using his principles:
             1. Insist on a margin of safety by buying below intrinsic value (e.g., using Graham Number, net-net).
@@ -295,6 +287,15 @@ public class BenGrahamAgent
             5. Avoid speculative or high-growth assumptions; focus on proven metrics.
 
             Return a rational recommendation: bullish, bearish, or neutral, with a confidence level (0-100) and concise reasoning.";
+
+        var analysisData = new
+        {
+            Score = totalScore,
+            Maxscore = maxScore,
+            Earnings = earnings,
+            Strength = strength,
+            Valuation = valuation
+        };
 
         return LlmTradeSignalGenerator.TryGenerateSignal(
             _httpLib,

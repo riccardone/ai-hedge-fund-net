@@ -1,5 +1,4 @@
 ﻿using AiHedgeFund.Contracts;
-using AiHedgeFund.Contracts.Model;
 using NLog;
 
 namespace AiHedgeFund.Agents.Services;
@@ -20,10 +19,10 @@ public class TradingInitializer
     {
         var state = new TradingWorkflowState
         {
-            InitialCash = _args.InitialCash,
+            //InitialCash = _args.InitialCash,
             Tickers = _args.Tickers,
             SelectedAnalysts = _args.AgentNames,
-            RiskLevel = _args.RiskLevel,
+            //RiskLevel = _args.RiskLevel,
             StartDate = _args.StartDate,
             EndDate = _args.EndDate,
             AnalystSignals = new Dictionary<string, IDictionary<string, object>>(),
@@ -66,14 +65,14 @@ public class TradingInitializer
 
         await Task.CompletedTask;
 
-        Logger.Info($"Initial Cash: {state.InitialCash}");
-        Logger.Info($"Margin Rate: {state.MarginRequirement}");
+        //Logger.Info($"Initial Cash: {state.InitialCash}");
+        //Logger.Info($"Margin Rate: {state.MarginRequirement}");
         Logger.Info($"Selected Tickers: {string.Join(", ", state.Tickers)}");
         Logger.Info($"Start Date: {state.StartDate}");
         Logger.Info($"End Date: {state.EndDate}");
-        Logger.Info($"Show Reasoning: {state.ShowReasoning}");
+        //Logger.Info($"Show Reasoning: {state.ShowReasoning}");
         Logger.Info($"Model Name: {state.ModelName}");
-        Logger.Info($"Risk Level: {state.RiskLevel}");
+        //Logger.Info($"Risk Level: {state.RiskLevel}");
 
         return state;
     }

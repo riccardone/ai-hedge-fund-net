@@ -49,10 +49,10 @@ public class RiskManagerAgent
 
             results[ticker] = assessment;
 
-            if (state.ShowReasoning)
-            {
-                Logger.Info($"[Risk] {ticker}: pos={costBasis}, limit={positionLimit}, remaining={remainingLimit}, cash={portfolio.Cash}");
-            }
+            //if (state.ShowReasoning)
+            //{
+            //    Logger.Info($"[Risk] {ticker}: pos={costBasis}, limit={positionLimit}, remaining={remainingLimit}, cash={portfolio.Cash}");
+            //}
         }
 
         return results;

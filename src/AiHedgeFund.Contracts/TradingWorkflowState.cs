@@ -10,13 +10,13 @@ public class TradingWorkflowState
     public IDictionary<string, IEnumerable<Price>> Prices { get; set; } = new Dictionary<string, IEnumerable<Price>>();
     public DateTime StartDate { get; set; } 
     public DateTime EndDate { get; set; } 
-    public bool ShowReasoning { get; set; }
+    //public bool ShowReasoning { get; set; }
     public List<string> SelectedAnalysts { get; set; } = new();
     public string ModelName { get; set; } = "gpt-4o";
     public string ModelProvider { get; set; } = "OpenAI";
-    public string? RiskLevel { get; set; }
-    public decimal MarginRequirement { get; set; }
-    public decimal InitialCash { get; set; }
+    //public string? RiskLevel { get; set; }
+    //public decimal MarginRequirement { get; set; }
+    //public decimal InitialCash { get; set; }
     public List<string> Tickers { get; set; } = new(); 
     public Portfolio Portfolio { get; set; } = new();
     public Dictionary<string, IDictionary<string, object>>? AnalystSignals { get; set; }

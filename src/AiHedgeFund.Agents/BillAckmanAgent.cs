@@ -39,7 +39,7 @@ public class BillAckmanAgent
                 continue;
             }
 
-            var marketCap = metrics.OrderByDescending(m => m.Period).FirstOrDefault()?.MarketCap;
+            var marketCap = metrics.MaxBy(m => m.Period)?.MarketCap;
             if (marketCap == null)
             {
                 Logger.Warn($"No market cap for {ticker}");
@@ -50,17 +50,24 @@ public class BillAckmanAgent
             var financialDiscipline = AnalyzeFinancialDiscipline(metrics, lineItems);
             var valuation = AnalyzeValuation(metrics, marketCap);
 
-            Logger.Info("{0} Business Quality: {1}", ticker, string.Join("; ", businessQuality.Details));
-            Logger.Info("{0} Financial Discipline: {1}", ticker, string.Join("; ", financialDiscipline.Details));
-            Logger.Info("{0} Valuation: {1}", ticker, string.Join("; ", valuation.Details));
-
             var totalScore = businessQuality.Score + financialDiscipline.Score + valuation.Score;
-            const int maxScore = 15;
+            var maxScore = Math.Max(1, businessQuality.MaxScore + financialDiscipline.MaxScore + valuation.MaxScore);
+
+            string signal;
+            if (totalScore >= 0.7 * maxScore)
+                signal = "bullish";
+            else if (totalScore <= 0.3 * maxScore)
+                signal = "bearish";
+            else
+                signal = "neutral";
+
+            Logger.Info($"{ticker} Business Quality {businessQuality.Score}/{businessQuality.MaxScore}: {string.Join("; ", businessQuality.Details)})");
+            Logger.Info($"{ticker} Financial Discipline {financialDiscipline.Score}/{financialDiscipline.MaxScore}: {string.Join("; ", financialDiscipline.Details)}");
+            Logger.Info($"{ticker} Valuation {valuation.Score}/{valuation.MaxScore}: {string.Join("; ", valuation.Details)}");
+            Logger.Info($"{ticker} Signal {signal}");
 
             if (TryGenerateOutput(ticker, businessQuality, financialDiscipline, valuation, totalScore, maxScore, out TradeSignal tradeSignal))
-            {
                 signals.Add(tradeSignal);
-            }
             else
                 Logger.Error($"Error while running {nameof(BillAckmanAgent)}");
         }

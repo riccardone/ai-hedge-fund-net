@@ -33,7 +33,7 @@ public class CathieWoodAgent
 
         foreach (var ticker in state.Tickers)
         {
-            Logger.Info("[CathieWood] Starting analysis for {0}", ticker);
+            Logger.Info($"[CathieWood] Starting analysis for {ticker}");
 
             if (!state.FinancialMetrics.TryGetValue(ticker, out var metrics)
                 || !state.FinancialLineItems.TryGetValue(ticker, out var lineItems))
@@ -42,7 +42,7 @@ public class CathieWoodAgent
                 continue;
             }
 
-            var marketCap = metrics.OrderByDescending(m => m.Period).FirstOrDefault()?.MarketCap;
+            var marketCap = metrics.MaxBy(m => m.Period)?.MarketCap;
             if (marketCap == null)
             {
                 Logger.Warn($"No market cap for {ticker}");
@@ -53,12 +53,21 @@ public class CathieWoodAgent
             var innovation = AnalyzeInnovationGrowth(metrics, lineItems);
             var valuation = AnalyzeValuation(metrics, marketCap.Value);
 
-            Logger.Info("{0} Disruptive Potential: {1}", ticker, disruptive.Details);
-            Logger.Info("{0} Innovation Growth: {1}", ticker, innovation.Details);
-            Logger.Info("{0} Valuation: {1}", ticker, valuation.Details);
-
             var totalScore = disruptive.Score + innovation.Score + valuation.Score;
-            const int maxScore = 15;
+            var maxScore = Math.Max(1, disruptive.MaxScore + innovation.MaxScore + valuation.MaxScore);
+
+            string signal;
+            if (totalScore >= 0.7 * maxScore)
+                signal = "bullish";
+            else if (totalScore <= 0.3 * maxScore)
+                signal = "bearish";
+            else
+                signal = "neutral";
+
+            Logger.Info($"{ticker} Disruptive Potential {disruptive.Score}/{disruptive.MaxScore}: {string.Join("; ", disruptive.Details)}");
+            Logger.Info($"{ticker} Innovation Growth {innovation.Score}/{innovation.MaxScore}: {string.Join("; ", innovation.Details)}");
+            Logger.Info($"{ticker} Valuation {valuation.Score}/{valuation.MaxScore}: {string.Join("; ", valuation.Details)}");
+            Logger.Info($"{ticker} Signal {signal}");
 
             if (TryGenerateOutput(state, ticker, disruptive, innovation, valuation, totalScore, maxScore, out var tradeSignal))
             {
@@ -71,9 +80,9 @@ public class CathieWoodAgent
         return signals;
     }
 
-    private AnalysisResult AnalyzeDisruptivePotential(IEnumerable<FinancialMetrics> metrics, IEnumerable<FinancialLineItem> lineItems)
+    private FinancialAnalysisResult AnalyzeDisruptivePotential(IEnumerable<FinancialMetrics> metrics, IEnumerable<FinancialLineItem> lineItems)
     {
-        int score = 0;
+        var score = 0;
         var details = new List<string>();
         var ordered = metrics.OrderBy(m => m.Period).ToList();
 
@@ -89,9 +98,7 @@ public class CathieWoodAgent
             else if (latest > 0.10m) { score += 1; details.Add($"Moderate revenue growth: {latest:P1}"); }
         }
         else
-        {
             details.Add("Insufficient revenue growth data");
-        }
 
         var margins = ordered.Select(m => m.GrossMargin).Where(x => x.HasValue).Select(x => x.Value).ToList();
         if (margins.Count >= 2)
@@ -103,9 +110,7 @@ public class CathieWoodAgent
             if (margins[^1] > 0.50m) { score += 2; details.Add($"High gross margin: {margins[^1]:P1}"); }
         }
         else
-        {
             details.Add("Insufficient gross margin data");
-        }
 
         var opMargins = ordered.Select(m => m.OperatingMargin).Where(x => x.HasValue).Select(x => x.Value).ToList();
         var revenues = ordered.Select(m => m.RevenueGrowth).Where(x => x.HasValue).Select(x => x.Value).ToList();
@@ -136,14 +141,12 @@ public class CathieWoodAgent
         }
 
         if (score == 0)
-        {
             details.Add("No strong indicators of disruptive potential found");
-        }
 
-        return new AnalysisResult { Score = score, Details = string.Join("; ", details) };
+        return new FinancialAnalysisResult(score, details);
     }
 
-    private AnalysisResult AnalyzeInnovationGrowth(IEnumerable<FinancialMetrics> metrics, IEnumerable<FinancialLineItem> lineItems)
+    private FinancialAnalysisResult AnalyzeInnovationGrowth(IEnumerable<FinancialMetrics> metrics, IEnumerable<FinancialLineItem> lineItems)
     {
         int score = 0;
         var details = new List<string>();
@@ -209,15 +212,15 @@ public class CathieWoodAgent
             else if (payoutRatio < 0.4m) { score += 1; details.Add("Moderate reinvestment"); }
         }
 
-        return new AnalysisResult { Score = score, Details = string.Join("; ", details) };
+        return new FinancialAnalysisResult(score, details);
     }
 
-    private AnalysisResult AnalyzeValuation(IEnumerable<FinancialMetrics> metrics, decimal marketCap)
+    private FinancialAnalysisResult AnalyzeValuation(IEnumerable<FinancialMetrics> metrics, decimal marketCap)
     {
         var fcf = metrics.Select(li => li.OperatingCashFlow).ToList();
         if (fcf.Count == 0 || fcf[^1] <= 0)
         {
-            return new AnalysisResult { Score = 0, Details = $"No positive FCF for valuation; FCF = {fcf.LastOrDefault():N2}" };
+            return new FinancialAnalysisResult(0, new []{$"No positive FCF for valuation; FCF = {fcf.LastOrDefault():N2}"});
         }
 
         var baseFcf = fcf[^1];
@@ -244,18 +247,11 @@ public class CathieWoodAgent
         else if (marginOfSafety > 0.2m) score += 1;
 
         var details = $"Intrinsic value: ~{intrinsicValue:N0}; Market cap: ~{marketCap:N0}; Margin of safety: {marginOfSafety:P1}";
-        return new AnalysisResult { Score = score, Details = details };
+        return new FinancialAnalysisResult(score, new []{details});
     }
 
-    // TODO remove this class and use financialresult
-    private class AnalysisResult
-    {
-        public decimal Score { get; set; }
-        public string Details { get; set; } = string.Empty;
-    }
-
-    private bool TryGenerateOutput(TradingWorkflowState state, string ticker, AnalysisResult disruptive,
-        AnalysisResult innovation, AnalysisResult valuation, decimal totalScore, int maxScore,
+    private bool TryGenerateOutput(TradingWorkflowState state, string ticker, FinancialAnalysisResult disruptive,
+        FinancialAnalysisResult innovation, FinancialAnalysisResult valuation, decimal totalScore, int maxScore,
         out TradeSignal tradeSignal)
     {
         var systemMessage = @"You are a Cathie Wood AI agent, making investment decisions using her principles:
@@ -273,19 +269,21 @@ Rules:
 - Use a growth-biased valuation approach.
 - Provide a data-driven recommendation (bullish, bearish, or neutral).";
 
+        var analysisData = new
+        {
+            score = totalScore,
+            max_score = maxScore,
+            disruptive_analysis = disruptive,
+            innovation_analysis = innovation,
+            valuation_analysis = valuation
+        };
+
         return LlmTradeSignalGenerator.TryGenerateSignal(
             _httpLib,
             "chat/completions",
             ticker,
             systemMessage,
-            new
-            {
-                score = totalScore,
-                max_score = maxScore,
-                disruptive_analysis = disruptive,
-                innovation_analysis = innovation,
-                valuation_analysis = valuation
-            },
+            analysisData,
             agentName: "Cathie Wood",
             out tradeSignal
         );

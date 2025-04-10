@@ -2,15 +2,15 @@
 
 public class AppArguments
 {
-    public List<string> AgentNames { get; set; } = new() { "stanley_druckenmiller" }; // "ben_graham" "cathie_wood" "bill_ackman"
-    public string RiskLevel { get; set; } = "medium";
+    public List<string> AgentNames { get; set; } = new() { "charlie_munger" }; // "stanley_druckenmiller", "ben_graham", "cathie_wood", "bill_ackman", "charlie_munger"
+    //public string RiskLevel { get; set; } = "medium";
     public List<string> Tickers { get; set; } = new() { "MSFT" };
 
     public DateTime StartDate { get; set; } = DateTime.Today.AddMonths(-3);
     public DateTime EndDate { get; set; } = DateTime.Today;
 
-    public decimal InitialCash { get; set; } = 100_000m;
-    public decimal MarginRequirement { get; set; } = 0.5m;
+    //public decimal InitialCash { get; set; } = 100_000m;
+    //public decimal MarginRequirement { get; set; } = 0.5m;
 
     public AppArguments(string[] args)
     {
@@ -23,10 +23,10 @@ public class AppArguments
                         AgentNames.Add(args[++i]);
                     break;
 
-                case "--risk-level":
-                    if (i + 1 < args.Length)
-                        RiskLevel = args[++i];
-                    break;
+                //case "--risk-level":
+                //    if (i + 1 < args.Length)
+                //        RiskLevel = args[++i];
+                //    break;
 
                 case "--tickers":
                     while (i + 1 < args.Length && !args[i + 1].StartsWith("--"))
@@ -47,19 +47,19 @@ public class AppArguments
                         throw new ArgumentException("Invalid or missing --end-date");
                     break;
 
-                case "--initial-cash":
-                    if (i + 1 < args.Length && decimal.TryParse(args[++i], out var cash))
-                        InitialCash = cash;
-                    else
-                        throw new ArgumentException("Invalid or missing --initial-cash");
-                    break;
+                //case "--initial-cash":
+                //    if (i + 1 < args.Length && decimal.TryParse(args[++i], out var cash))
+                //        InitialCash = cash;
+                //    else
+                //        throw new ArgumentException("Invalid or missing --initial-cash");
+                //    break;
 
-                case "--margin-requirement":
-                    if (i + 1 < args.Length && decimal.TryParse(args[++i], out var margin))
-                        MarginRequirement = margin;
-                    else
-                        throw new ArgumentException("Invalid or missing --margin-requirement");
-                    break;
+                //case "--margin-requirement":
+                //    if (i + 1 < args.Length && decimal.TryParse(args[++i], out var margin))
+                //        MarginRequirement = margin;
+                //    else
+                //        throw new ArgumentException("Invalid or missing --margin-requirement");
+                //    break;
             }
         }
 

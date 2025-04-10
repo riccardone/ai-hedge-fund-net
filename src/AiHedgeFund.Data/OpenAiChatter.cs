@@ -1,10 +1,12 @@
 ﻿using System.Text;
 using AiHedgeFund.Contracts;
+using NLog;
 
 namespace AiHedgeFund.Data;
 
 public class OpenAiChatter : IHttpLib
 {
+    private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
     private readonly HttpClient _client;
 
     public OpenAiChatter(IHttpClientFactory clientFactory)
@@ -20,6 +22,7 @@ public class OpenAiChatter : IHttpLib
 
         if (responseMessage.IsSuccessStatusCode)
             return true;
-        throw new Exception($"Request failed: {responseMessage.StatusCode} - {response} ");
+        Logger.Error($"Request failed for {path}: {responseMessage.StatusCode} - {response} ");
+        return false;
     }
 }

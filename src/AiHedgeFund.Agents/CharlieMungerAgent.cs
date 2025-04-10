@@ -1,8 +1,6 @@
 ﻿using AiHedgeFund.Contracts;
 using AiHedgeFund.Contracts.Model;
 using NLog;
-using System.Text.Json;
-using System.Text.RegularExpressions;
 using AiHedgeFund.Agents.Services;
 
 namespace AiHedgeFund.Agents;
@@ -54,16 +52,25 @@ public class CharlieMungerAgent
             var companyNews = AnalyzeCompanyNews(state.CompanyNews[ticker].ToList());
             var valuation = AnalyzeValuation(metrics, marketCap);
 
-            Logger.Info("{0} Moat Strength: {1}", ticker, string.Join("; ", moatStrength.Details));
-            Logger.Info("{0} Management Quality: {1}", ticker, string.Join("; ", managementQuality.Details));
-            Logger.Info("{0} Predictability: {1}", ticker, string.Join("; ", predictability.Details));
-            Logger.Info("{0} Company News: {1}", ticker, string.Join("; ", companyNews.Details));
-            Logger.Info("{0} Valuation: {1}", ticker, string.Join("; ", valuation.Details));
-
             var totalScore = moatStrength.Score + managementQuality.Score + companyNews.Score + predictability.Score + valuation.Score;
-            const int maxScore = 50;
+            var maxScore = Math.Max(1, moatStrength.MaxScore + managementQuality.MaxScore + companyNews.MaxScore + predictability.MaxScore + valuation.MaxScore);
 
-            if(TryGenerateOutput(state, ticker, moatStrength, managementQuality, predictability, companyNews, valuation, totalScore, maxScore, out TradeSignal tradeSignal))
+            string signal;
+            if (totalScore >= 0.7 * maxScore)
+                signal = "bullish";
+            else if (totalScore <= 0.3 * maxScore)
+                signal = "bearish";
+            else
+                signal = "neutral";
+
+            Logger.Info($"{ticker} Moat Strength {moatStrength.Score}/{moatStrength.MaxScore}: {string.Join("; ", moatStrength.Details)}");
+            Logger.Info($"{ticker} Management Quality {managementQuality.Score}/{managementQuality.MaxScore}: {string.Join("; ", managementQuality.Details)}");
+            Logger.Info($"{ticker} Predictability {predictability.Score}/{predictability.MaxScore}: {string.Join("; ", predictability.Details)}");
+            Logger.Info($"{ticker} Company News {companyNews.Score}/{companyNews.MaxScore}: {string.Join("; ", companyNews.Details)}");
+            Logger.Info($"{ticker} Valuation {valuation.Score}/{valuation.MaxScore}: {string.Join("; ", valuation.Details)}");
+            Logger.Info($"{ticker} Signal {signal}");
+
+            if (TryGenerateOutput(state, ticker, moatStrength, managementQuality, predictability, companyNews, valuation, totalScore, maxScore, out TradeSignal tradeSignal))
                 signals.Add(tradeSignal);
             else
                 Logger.Error($"Error while running {nameof(CharlieMungerAgent)}");
@@ -941,21 +948,23 @@ Rules:
 - Avoid excessive leverage or financial engineering.
 - Provide a rational, data-driven recommendation (bullish, bearish, or neutral).";
 
+        var analysisData = new
+        {
+            score = totalScore,
+            max_score = maxScore,
+            Overall = analysisResult,
+            Financials = financialAnalysisResult,
+            BusinessQuality = businessQuality,
+            CompanyNews = companyNews,
+            Valuation = valuation
+        };
+
         return LlmTradeSignalGenerator.TryGenerateSignal(
             _httpLib,
             "chat/completions",
             ticker,
             systemMessage,
-            new
-            {
-                score = totalScore,
-                max_score = maxScore,
-                Overall = analysisResult,
-                Financials = financialAnalysisResult,
-                BusinessQuality = businessQuality,
-                CompanyNews = companyNews,
-                Valuation = valuation
-            },
+            analysisData,
             agentName: "Charlie Munger",
             out tradeSignal
         );
