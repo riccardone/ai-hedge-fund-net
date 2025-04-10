@@ -16,7 +16,7 @@ public class CompanyOverview
     public string FiscalYearEnd { get; set; }
     public DateTime? LatestQuarter { get; set; }
     public decimal? MarketCapitalization { get; set; }
-    public long? EBITDA { get; set; }
+    public decimal? EBITDA { get; set; }
     public decimal? PERatio { get; set; }
     public decimal? PEGRatio { get; set; }
     public decimal? BookValue { get; set; }

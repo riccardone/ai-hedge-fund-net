@@ -1,4 +1,6 @@
-﻿namespace AiHedgeFund.Contracts.Model;
+﻿using System.Runtime.InteropServices.ComTypes;
+
+namespace AiHedgeFund.Contracts.Model;
 
 public class FinancialMetrics
 {
@@ -56,4 +58,5 @@ public class FinancialMetrics
     public decimal? TotalDebt { get; set; }
     public decimal? TotalShareholderEquity { get; set; }
     public decimal? CashAndCashEquivalentsAtCarryingValue { get; set; }
+    public decimal? TransactionSharesFromInsiders { get; set; }
 }

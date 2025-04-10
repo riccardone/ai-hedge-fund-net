@@ -25,6 +25,8 @@ public class IncomeStatementReport
     public decimal? IncomeTaxExpense { get; set; }
     public decimal GrossMargin { get; set; }
     public Dictionary<string, decimal?> Extras { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public decimal? EBITDA { get; set; }
+    public decimal? EBIT { get; set; }
 
     public Dictionary<string, decimal?> GetLineItems()
     {
@@ -42,8 +44,9 @@ public class IncomeStatementReport
             ["IncomeBeforeTax"] = IncomeBeforeTax,
             ["CostOfRevenue"] = CostOfRevenue,
             ["IncomeTaxExpense"] = IncomeTaxExpense,
-            ["GrossMargin"] = GrossMargin
+            ["GrossMargin"] = GrossMargin,
+            ["EBITDA"] = EBITDA,
+            ["EBIT"] = EBIT
         };
     }
-
 }

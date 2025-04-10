@@ -33,6 +33,7 @@ internal class Program
                 services.AddSingleton<CathieWoodAgent>();
                 services.AddSingleton<BillAckmanAgent>();
                 services.AddSingleton<CharlieMungerAgent>();
+                services.AddSingleton<StanleyDruckenmillerAgent>();
                 services.AddSingleton<RiskManagerAgent>();
                 services.AddHostedService<AgentBootstrapper>();
                 services.AddTransient<PortfolioManager>();

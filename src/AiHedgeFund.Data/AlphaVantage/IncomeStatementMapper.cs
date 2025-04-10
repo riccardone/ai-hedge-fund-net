@@ -28,6 +28,14 @@ public static class IncomeStatementMapper
 
             switch (normalizedKey)
             {
+                case "ebit":
+                    report.EBIT = parsedValue;
+                    break;
+
+                case "ebitda":
+                    report.EBITDA = parsedValue;
+                    break;
+
                 case "fiscaldateending":
                     report.FiscalDateEnding = DateTime.Parse(value);
                     break;
