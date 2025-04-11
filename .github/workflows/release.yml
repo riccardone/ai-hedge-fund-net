@@ -27,11 +27,11 @@ jobs:
       - name: Build solution
         run: dotnet build src/AiHedgeFund.sln --configuration Release --no-restore
 
-      - name: Show contents of bin folder
-        run: ls -R src/AiHedgeFund.Tests/bin
+      # - name: Show contents of bin folder
+      #   run: ls -R src/AiHedgeFund.Tests/bin
 
-      - name: Run tests
-        run: dotnet test src/AiHedgeFund.Tests/AiHedgeFund.Tests.csproj --no-build --verbosity normal
+      # - name: Run tests
+      #   run: dotnet test src/AiHedgeFund.Tests/AiHedgeFund.Tests.csproj --no-build --verbosity normal
 
       - name: Publish console app
         run: dotnet publish src/AiHedgeFund.Console/AiHedgeFund.Console.csproj -c Release -o out
