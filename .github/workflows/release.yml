@@ -42,14 +42,10 @@ jobs:
       - name: Generate release notes
         id: changelog
         run: |
-          {
-            echo 'changelog<<EOF'
-            git log --pretty=format:"- %s" $(git describe --tags --abbrev=0)^..HEAD
-            echo 'EOF'
-          } > changelog.txt
-      
-          cat changelog.txt >> $GITHUB_OUTPUT
-      
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          git log --pretty=format:"- %s" $(git describe --tags --abbrev=0)^..HEAD >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        shell: bash 
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
