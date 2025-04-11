@@ -13,6 +13,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          path: .
           fetch-depth: 0  # Enables changelog generation from commit history
 
       - name: Setup .NET 9
