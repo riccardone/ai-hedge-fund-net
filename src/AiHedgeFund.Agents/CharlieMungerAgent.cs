@@ -49,9 +49,10 @@ public class CharlieMungerAgent
             var moatStrength = AnalyzeMoatStrength(metrics, lineItems);
             var managementQuality = AnalyzeManagementQuality(metrics, lineItems);
             var predictability = AnalyzePredictability(metrics, lineItems);
-            var companyNews = AnalyzeCompanyNews(state.CompanyNews[ticker].ToList());
+            var companyNews = new FinancialAnalysisResult(5, new []{"no news available"});
+            if (state.CompanyNews.TryGetValue(ticker, out var newsList) && newsList != null && newsList.Any())
+                companyNews = AnalyzeCompanyNews(newsList.ToList());
             var valuation = AnalyzeValuation(metrics, marketCap);
-
             var totalScore = moatStrength.Score + managementQuality.Score + companyNews.Score + predictability.Score + valuation.Score;
             var maxScore = Math.Max(1, moatStrength.MaxScore + managementQuality.MaxScore + companyNews.MaxScore + predictability.MaxScore + valuation.MaxScore);
 
@@ -70,10 +71,14 @@ public class CharlieMungerAgent
             Logger.Info($"{ticker} Valuation {valuation.Score}/{valuation.MaxScore}: {string.Join("; ", valuation.Details)}");
             Logger.Info($"{ticker} Signal {signal}");
 
-            if (TryGenerateOutput(state, ticker, moatStrength, managementQuality, predictability, companyNews, valuation, totalScore, maxScore, out TradeSignal tradeSignal))
+            if (TryGenerateOutput(state, ticker, moatStrength, managementQuality, predictability, companyNews, valuation, totalScore, maxScore, out var tradeSignal))
                 signals.Add(tradeSignal);
             else
+            {
                 Logger.Error($"Error while running {nameof(CharlieMungerAgent)}");
+                return new List<TradeSignal> { tradeSignal };
+            }
+                
         }
 
         return signals;
