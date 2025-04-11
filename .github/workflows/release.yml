@@ -42,10 +42,8 @@ jobs:
       - name: Generate release notes
         id: changelog
         run: |
-          echo "changelog<<EOF" >> changelog_output.txt
-          git log --pretty=format:"- %s" $(git describe --tags --abbrev=0)^..HEAD >> changelog_output.txt
-          echo "EOF" >> changelog_output.txt
-          cat changelog_output.txt >> $GITHUB_OUTPUT      
+          git log --pretty=format:"- %s" $(git describe --tags --abbrev=0)^..HEAD > changelog.txt
+          echo "changelog=$(cat changelog.txt)" >> $GITHUB_OUTPUT      
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
