@@ -47,11 +47,11 @@ public class FinancialMetrics
     public decimal? EarningsPerShare { get; set; }
     public decimal? BookValuePerShare { get; set; }
     public decimal? FreeCashFlowPerShare { get; set; }
-    public decimal OperatingCashFlow { get; set; }
+    public decimal? OperatingCashFlow { get; set; }
     public decimal? TotalRevenue { get; set; }
-    public decimal CapitalExpenditure { get; set; }
+    public decimal? CapitalExpenditure { get; set; }
     public decimal DividendsAndOtherCashDistributions { get; set; }
-    public decimal FreeCashFlow => OperatingCashFlow - CapitalExpenditure;
+    public decimal? FreeCashFlow => OperatingCashFlow - CapitalExpenditure;
     public decimal? CommonStockSharesOutstanding { get; set; }
     public decimal? GoodwillAndIntangibleAssets { get; set; }
     public decimal? NetIncome { get; set; }
@@ -59,4 +59,6 @@ public class FinancialMetrics
     public decimal? TotalShareholderEquity { get; set; }
     public decimal? CashAndCashEquivalentsAtCarryingValue { get; set; }
     public decimal? TransactionSharesFromInsiders { get; set; }
+    public decimal? OutstandingShares { get; set; }
+    public decimal? DepreciationAndAmortization { get; set; }
 }

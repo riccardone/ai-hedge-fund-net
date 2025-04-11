@@ -45,7 +45,7 @@ public class CompanyOverview
     public decimal? _52WeekLow { get; set; }
     public decimal? _50DayMovingAverage { get; set; }
     public decimal? _200DayMovingAverage { get; set; }
-    public long? SharesOutstanding { get; set; }
+    public decimal? SharesOutstanding { get; set; }
     public DateTime? DividendDate { get; set; }
     public DateTime? ExDividendDate { get; set; }
 }

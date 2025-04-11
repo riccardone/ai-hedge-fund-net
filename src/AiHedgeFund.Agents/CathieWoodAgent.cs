@@ -179,7 +179,7 @@ public class CathieWoodAgent
         var fcf = metrics.Select(li => li.OperatingCashFlow).ToList();
         if (fcf.Count >= 2)
         {
-            var growth = (fcf[^1] - fcf[0]) / Math.Abs(fcf[0]);
+            var growth = (fcf[^1] - fcf[0]) / Math.Abs(fcf[0].Value);
             var positiveCount = fcf.Count(f => f > 0);
             if (growth > 0.3m && positiveCount == fcf.Count) { score += 3; details.Add("Strong, consistent FCF growth"); }
             else if (positiveCount >= fcf.Count * 0.75) { score += 2; details.Add("Consistently positive FCF"); }
@@ -198,8 +198,8 @@ public class CathieWoodAgent
         var capex = metrics.Select(li => li.CapitalExpenditure).ToList();
         if (capex.Count >= 2 && revenues.Count >= 2)
         {
-            var intensity = Math.Abs(capex[^1]) / revenues[^1];
-            var growth = (Math.Abs(capex[^1]) - Math.Abs(capex[0])) / Math.Abs(capex[0]);
+            var intensity = Math.Abs(capex[^1].Value) / revenues[^1];
+            var growth = (Math.Abs(capex[^1].Value) - Math.Abs(capex[0].Value)) / Math.Abs(capex[0].Value);
             if (intensity > 0.10m && growth > 0.2m) { score += 2; details.Add("Strong capex for growth"); }
             else if (intensity > 0.05m) { score += 1; details.Add("Moderate capex for growth"); }
         }
@@ -217,13 +217,11 @@ public class CathieWoodAgent
 
     private FinancialAnalysisResult AnalyzeValuation(IEnumerable<FinancialMetrics> metrics, decimal marketCap)
     {
-        var fcf = metrics.Select(li => li.OperatingCashFlow).ToList();
+        var fcf = metrics.Where(v => v.OperatingCashFlow.HasValue).Select(li => li.OperatingCashFlow).ToList();
         if (fcf.Count == 0 || fcf[^1] <= 0)
-        {
             return new FinancialAnalysisResult(0, new []{$"No positive FCF for valuation; FCF = {fcf.LastOrDefault():N2}"});
-        }
 
-        var baseFcf = fcf[^1];
+        var baseFcf = fcf[^1].Value;
         const decimal growthRate = 0.20m;
         const decimal discountRate = 0.15m;
         const int terminalMultiple = 25;

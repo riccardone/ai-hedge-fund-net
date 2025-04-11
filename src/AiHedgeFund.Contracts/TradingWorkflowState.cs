@@ -14,7 +14,7 @@ public class TradingWorkflowState
     public List<string> SelectedAnalysts { get; set; } = new();
     public string ModelName { get; set; } = "gpt-4o";
     public string ModelProvider { get; set; } = "OpenAI";
-    //public string? RiskLevel { get; set; }
+    public RiskLevel RiskLevel { get; set; }
     //public decimal MarginRequirement { get; set; }
     //public decimal InitialCash { get; set; }
     public List<string> Tickers { get; set; } = new(); 

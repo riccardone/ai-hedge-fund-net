@@ -16,7 +16,7 @@ public class CashFlowReport
     public decimal ProceedsFromOperatingActivities { get; set; }
     public decimal ChangeInOperatingLiabilities { get; set; }
     public decimal ChangeInOperatingAssets { get; set; }
-    public decimal DepreciationDepletionAndAmortization { get; set; }
+    public decimal? DepreciationDepletionAndAmortization { get; set; }
     public decimal CapitalExpenditures { get; set; }
     public decimal ChangeInReceivables { get; set; }
     public decimal ChangeInInventory { get; set; }

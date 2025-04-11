@@ -26,6 +26,7 @@ internal class Program
                 services.AddSingleton(appArgs);
                 services.AddSingleton<IDataReader, AlphaVantageDataReader>();
                 services.AddSingleton<IPriceVolumeProvider, FakePriceVolumeProvider>();
+                services.AddSingleton<IValuationEngine, DefaultValuationEngine>();
                 services.AddSingleton<IHttpLib, OpenAiChatter>();
                 services.AddSingleton<TradingInitializer>();
                 services.AddSingleton<IAgentRegistry, AgentRegistry>();
@@ -34,6 +35,7 @@ internal class Program
                 services.AddSingleton<BillAckmanAgent>();
                 services.AddSingleton<CharlieMungerAgent>();
                 services.AddSingleton<StanleyDruckenmillerAgent>();
+                services.AddSingleton<WarrenBuffettAgent>();
                 services.AddSingleton<RiskManagerAgent>();
                 services.AddHostedService<AgentBootstrapper>();
                 services.AddTransient<PortfolioManager>();

@@ -22,7 +22,7 @@ public class TradingInitializer
             //InitialCash = _args.InitialCash,
             Tickers = _args.Tickers,
             SelectedAnalysts = _args.AgentNames,
-            //RiskLevel = _args.RiskLevel,
+            RiskLevel = _args.RiskLevel,
             StartDate = _args.StartDate,
             EndDate = _args.EndDate,
             AnalystSignals = new Dictionary<string, IDictionary<string, object>>(),
@@ -72,7 +72,7 @@ public class TradingInitializer
         Logger.Info($"End Date: {state.EndDate}");
         //Logger.Info($"Show Reasoning: {state.ShowReasoning}");
         Logger.Info($"Model Name: {state.ModelName}");
-        //Logger.Info($"Risk Level: {state.RiskLevel}");
+        Logger.Info($"Risk Level: {state.RiskLevel}");
 
         return state;
     }

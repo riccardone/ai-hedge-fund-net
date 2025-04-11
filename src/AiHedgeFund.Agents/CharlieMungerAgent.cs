@@ -377,7 +377,7 @@ public class CharlieMungerAgent
             for (int i = 0; i < fcfs.Count; i++)
             {
                 if (netIncomes[i] > 0)
-                    ratios.Add(fcfs[i] / netIncomes[i].Value);
+                    ratios.Add(fcfs[i].Value / netIncomes[i].Value);
             }
 
             if (ratios.Count > 0)
@@ -731,7 +731,7 @@ public class CharlieMungerAgent
         }
 
         int count = Math.Min(5, fcfValues.Count);
-        var normalizedFcf = fcfValues.Take(count).Average();
+        var normalizedFcf = fcfValues.Where(v => v.HasValue).Take(count).Average();
 
         if (normalizedFcf <= 0)
         {
@@ -740,10 +740,10 @@ public class CharlieMungerAgent
             return result;
         }
 
-        var fcfYield = normalizedFcf / marketCap.Value;
-        decimal conservative = normalizedFcf * 10;
-        decimal reasonable = normalizedFcf * 15;
-        decimal optimistic = normalizedFcf * 20;
+        var fcfYield = normalizedFcf.Value / marketCap.Value;
+        decimal conservative = normalizedFcf.Value * 10;
+        decimal reasonable = normalizedFcf.Value * 15;
+        decimal optimistic = normalizedFcf.Value * 20;
 
         int score = 0;
 

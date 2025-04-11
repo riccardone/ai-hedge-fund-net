@@ -318,14 +318,14 @@ public class BillAckmanAgent
             return new FinancialAnalysisResult(0, result.Details, maxScore);
         }
 
-        var fcf = metrics.Select(li => li.OperatingCashFlow).ToList();
+        var fcf = metrics.Where(v => v.OperatingCashFlow.HasValue).Select(li => li.OperatingCashFlow).ToList();
         if (fcf.Count == 0 || fcf[^1] <= 0)
         {
             return new FinancialAnalysisResult(0,
                 new[] { $"No positive FCF for valuation; FCF = {fcf.LastOrDefault():N2}" }, maxScore);
         }
 
-        var baseFcf = fcf[^1];
+        var baseFcf = fcf[^1].Value;
         const decimal growthRate = 0.06m;
         const decimal discountRate = 0.10m;
         const int terminalMultiple = 15;

@@ -1,7 +1,8 @@
 {
   "profiles": {
     "AiHedgeFund.Console": {
-      "commandName": "Project"
+      "commandName": "Project",
+      "commandLineArgs": "--agent warren_buffett --tickers JNJ --risk-level high"
     },
     "Container (Dockerfile)": {
       "commandName": "Docker"

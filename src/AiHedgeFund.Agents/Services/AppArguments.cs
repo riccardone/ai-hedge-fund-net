@@ -1,20 +1,25 @@
-﻿namespace AiHedgeFund.Agents.Services;
+﻿using AiHedgeFund.Contracts;
+using AiHedgeFund.Contracts.Model;
+
+namespace AiHedgeFund.Agents.Services;
 
 public class AppArguments
 {
     private static readonly List<string> AvailableAgents = new()
     {
-        "charlie_munger", "stanley_druckenmiller", "ben_graham", "cathie_wood", "bill_ackman"
+        "charlie_munger", "stanley_druckenmiller", "ben_graham", "cathie_wood", "bill_ackman", "warren_buffett"
     };
 
-    public List<string> AgentNames { get; set; } = new() { "charlie_munger" };
-    public List<string> Tickers { get; set; } = new() { "MSFT" };
+    public List<string> AgentNames { get; set; } = new();
+    public List<string> Tickers { get; set; } = new();
     public DateTime StartDate { get; set; } = DateTime.Today.AddMonths(-3);
     public DateTime EndDate { get; set; } = DateTime.Today;
 
+    public RiskLevel RiskLevel { get; private set; } = RiskLevel.Medium; // Default value
+
     public AppArguments(string[] args)
     {
-        if (args.Contains("--help") || args.Contains("-h"))
+        if (args.Contains("--help") || args.Contains("-h") || args.Length == 0)
         {
             PrintHelp();
             Environment.Exit(0);
@@ -49,6 +54,13 @@ public class AppArguments
                     else
                         throw new ArgumentException("Invalid or missing --end-date");
                     break;
+
+                case "--risk-level":
+                    if (i + 1 < args.Length && Enum.TryParse<RiskLevel>(args[++i], true, out var riskLevel))
+                        RiskLevel = riskLevel;
+                    else
+                        throw new ArgumentException("Invalid or missing --risk-level. Use low, medium, or high.");
+                    break;
             }
         }
 
@@ -72,6 +84,7 @@ public class AppArguments
         Console.WriteLine("  --tickers [symbols]    : One or more stock tickers (e.g., MSFT AAPL TSLA)");
         Console.WriteLine("  --start-date YYYY-MM-DD: Optional start date (default: 3 months ago)");
         Console.WriteLine("  --end-date YYYY-MM-DD  : Optional end date (default: today)");
+        Console.WriteLine("  --risk-level [level]   : Optional valuation risk level: low, medium, or high (default: medium)");
         Console.WriteLine("  --help or -h           : Show this help message and exit");
     }
 }

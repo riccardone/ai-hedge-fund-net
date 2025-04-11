@@ -129,6 +129,7 @@ public class AlphaVantageDataReader : IDataReader
                     tmpMetrics.ReturnOnAssets = overviewData.ReturnOnAssetsTTM;
                     tmpMetrics.EarningsPerShare = overviewData.EPS;
                     tmpMetrics.RevenueGrowth = overviewData.QuarterlyRevenueGrowthYOY;
+                    tmpMetrics.OutstandingShares = overviewData.SharesOutstanding;
                 }
 
                 if (i < balanceReports.Count)
@@ -144,6 +145,10 @@ public class AlphaVantageDataReader : IDataReader
                         : bs.LongTermDebt ?? 0;
                     tmpMetrics.TotalShareholderEquity = bs.TotalShareholderEquity;
                     tmpMetrics.CashAndCashEquivalentsAtCarryingValue = bs.CashAndCashEquivalentsAtCarryingValue;
+                    if (bs.TotalCurrentAssets.HasValue && bs.TotalCurrentLiabilities.HasValue && bs.TotalCurrentLiabilities != 0)
+                        tmpMetrics.CurrentRatio = bs.TotalCurrentAssets.Value / bs.TotalCurrentLiabilities.Value;
+                    else
+                        tmpMetrics.CurrentRatio = null;
                 }
 
                 if (i < incomeReports.Count)
@@ -171,6 +176,7 @@ public class AlphaVantageDataReader : IDataReader
                     tmpMetrics.DividendsAndOtherCashDistributions =
                         cf.DividendPayoutCommonStock + cf.DividendPayoutPreferredStock;
                     tmpMetrics.NetIncome = cf.NetIncome;
+                    tmpMetrics.DepreciationAndAmortization = cf.DepreciationDepletionAndAmortization;
                 }
 
                 if (i < earningsReports.Count)
