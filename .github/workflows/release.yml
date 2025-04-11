@@ -24,10 +24,10 @@ jobs:
         run: dotnet restore
 
       - name: Build solution
-        run: dotnet build --configuration Release --no-restore
+        run: dotnet build ./src/AiHedgeFund.sln --configuration Release --no-restore
 
       - name: Run tests
-        run: dotnet test AiHedgeFund.Tests/AiHedgeFund.Tests.csproj --no-build --verbosity normal
+        run: dotnet test ./src/AiHedgeFund.Tests/AiHedgeFund.Tests.csproj --no-build --verbosity normal
 
       - name: Publish artifacts (optional)
         run: dotnet publish -c Release -o out
