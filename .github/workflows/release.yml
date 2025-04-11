@@ -1,0 +1,59 @@
+name: Build, Test, and Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Triggers only on version tags like v1.0.0
+
+jobs:
+  build-test-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Required to get commit history for changelog
+
+      - name: Setup .NET 9 SDK
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build solution
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Run tests
+        run: dotnet test AiHedgeFund.Tests/AiHedgeFund.Tests.csproj --no-build --verbosity normal
+
+      - name: Publish artifacts (optional)
+        run: dotnet publish -c Release -o out
+
+      - name: Archive release output
+        run: zip -r release-artifacts.zip out
+
+      - name: Generate release notes from commit history
+        id: changelog
+        run: |
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          git log --pretty=format:"- %s" $(git describe --tags --abbrev=0)^..HEAD >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body: ${{ steps.changelog.outputs.changelog }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload release artifacts
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release-artifacts.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
