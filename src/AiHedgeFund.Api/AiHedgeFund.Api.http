@@ -1,0 +1,6 @@
+@AiHedgeFund.Api_HostAddress = http://localhost:5164
+
+GET {{AiHedgeFund.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
