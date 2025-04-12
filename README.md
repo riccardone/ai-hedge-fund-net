@@ -4,7 +4,11 @@ Currently these are the configured agents: "charlie_munger", "stanley_druckenmil
 This .Net project is inspired by the ai-hedge-fund project written in pyton https://github.com/virattt/ai-hedge-fund
 
 # Configuration
-I decided to use Alpha Vantage as financial data provider. I don't have any connection with them or sponsorship. It's just happened that I created there my free API key and stick with them. Once I get through the initial phase of porting/development I will consider implement the IDataReader interface integrating with other providers. To get you free API key go here https://www.alphavantage.co/support/#api-key Once you have it, make sure to add the key in the appsettings.json. For the LLM reasoning OpenApi is the one used so make sure to get your api key from here https://platform.openai.com/account/api-keys and write it in the appsettings.json.
+I decided to use Alpha Vantage as the financial data provider. I have no affiliation or sponsorship with them—it just happened that I created my free API key there and decided to stick with them. Once I get through the initial phase of porting and development, I will consider implementing the IDataReader interface to integrate with other providers.
+
+To get your free API key, go here: https://www.alphavantage.co/support/#api-key. Once you have it, make sure to add the key to appsettings.json.
+
+For LLM reasoning, OpenAI is used, so make sure to get your API key from: https://platform.openai.com/account/api-keys and add it to appsettings.json as well.
 ```
 {
   "OpenAI": { "ApiKey": "your-api-key" },  
