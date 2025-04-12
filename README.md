@@ -1,29 +1,70 @@
 # ai-hedge-fund-net
-This is a program that provide trading signals analysing stocks. There are trading agents applying different principles to decide if a stock is a buy, hold or sell. The agents will also provide the reasoning behind, the confidence, the metrics and the specific rules.  
-Currently these are the configured agents: "charlie_munger", "stanley_druckenmiller", "ben_graham", "cathie_wood", "bill_ackman", "warren_buffett". As part of the analysis, each agent will integrate with an LLM trained for trading providing the reasoning behind signals.
-This .Net project is inspired by the ai-hedge-fund project written in pyton https://github.com/virattt/ai-hedge-fund
 
-# Configuration
-I decided to use Alpha Vantage as the financial data provider. I have no affiliation or sponsorship with them—it just happened that I created my free API key there and decided to stick with them. Once I get through the initial phase of porting and development, I will consider implementing the IDataReader interface to integrate with other providers.
+**ai-hedge-fund-net** is a .NET program that provides trading signals by analyzing stocks using multiple AI agents. Each agent applies a different investment philosophy to decide whether a stock is a **buy**, **hold**, or **sell**. Agents also provide their **reasoning**, **confidence score**, **key metrics**, and **specific rules** behind each decision.
 
-To get your free API key, go here: https://www.alphavantage.co/support/#api-key. Once you have it, make sure to add the key to appsettings.json.
+Currently, the following agents are implemented:
 
-For LLM reasoning, OpenAI is used, so make sure to get your API key from: https://platform.openai.com/account/api-keys and add it to appsettings.json as well.
-```
+- `charlie_munger`
+- `stanley_druckenmiller`
+- `ben_graham`
+- `cathie_wood`
+- `bill_ackman`
+- `warren_buffett`
+
+Each agent integrates with an LLM (Large Language Model) trained for financial reasoning to generate the insights behind its signals.
+
+This .NET project is inspired by the [ai-hedge-fund](https://github.com/virattt/ai-hedge-fund) project written in Python.
+
+---
+
+## Configuration
+
+This project uses **Alpha Vantage** as the financial data provider. I have no affiliation or sponsorship with them—it simply happened that I created a free API key there and stuck with it. Once the initial porting and development phase is complete, I plan to support additional providers by implementing the `IDataReader` interface.
+
+To use Alpha Vantage:
+
+1. Get your free API key from: [https://www.alphavantage.co/support/#api-key](https://www.alphavantage.co/support/#api-key)
+2. Add the key to your `appsettings.json` file.
+
+For LLM-based reasoning, **OpenAI** is used:
+
+1. Get your API key from: [https://platform.openai.com/account/api-keys](https://platform.openai.com/account/api-keys)
+2. Add it to `appsettings.json`.
+
+Example `appsettings.json`:
+
+```json
 {
-  "OpenAI": { "ApiKey": "your-api-key" },  
-  "AlphaVantage": { "ApiKey": "your-api-key" }  
+  "OpenAI": {
+    "ApiKey": "your-openai-api-key"
+  },
+  "AlphaVantage": {
+    "ApiKey": "your-alpha-vantage-api-key"
+  }
 }
 ```
-# Download and Run the program
-Go on Releases and download the latest release. 
-Run the program and pass --help or -h to print instructions
-```
+
+---
+
+## Download and Run the Program
+
+1. Go to the **Releases** section and download the latest release.
+2. Run the program with `--help` or `-h` to see usage instructions:
+
+```bash
 > AiHedgeFund.Console --help
 ```
-You can run the program specifying one or more agent and one or more stock.
-```
+
+3. Run the program by specifying one or more agents and one or more stock tickers:
+
+```bash
 > AiHedgeFund.Console --agent cathie_wood ben_graham --tickers MSFT AAPL
 ```
-# Cache
-When you run the program, please remember that all the financial data are only retrieved from the remote API once. After that all the data are serialized and saved on file and cached in memory. Next time you re-run the program for the same tickers the data will be read from disk. To force a refresh, you must manually delete the data folder that is automatically created in the same folder of the program. I will add soon a parameter to force a refresh
+
+---
+
+## Cache
+
+All financial data is fetched from the remote API **once**, then serialized to disk and cached in memory. On subsequent runs with the same tickers, the program will use the cached data instead of re-fetching it.
+
+To **force a data refresh**, manually delete the `data` folder located in the same directory as the program. A command-line parameter to automate this will be added soon.
