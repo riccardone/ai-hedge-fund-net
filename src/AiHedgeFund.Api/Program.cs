@@ -1,3 +1,8 @@
+using Microsoft.AspNetCore.Mvc.Versioning;
+using Microsoft.AspNetCore.Mvc;
+using NLog.Extensions.Logging;
+using AiHedgeFund.Contracts;
+using AiHedgeFund.Api.Services;
 
 namespace AiHedgeFund.Api;
 
@@ -7,43 +12,50 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        // Load API key from appsettings.json or environment
-        var apiKey = builder.Configuration["ApiKey"] ?? throw new InvalidOperationException("API key not configured.");
-
-        // Register services
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
 
+        builder.Services.AddLogging(logging =>
+        {
+            logging.ClearProviders();
+            logging.AddFilter("Microsoft.*", Microsoft.Extensions.Logging.LogLevel.Error);
+
+            logging.AddNLog(new NLogProviderOptions
+            {
+                ShutdownOnDispose = true,
+            });
+        });
+
+        builder.Services.AddApiVersioning(options =>
+        {
+            options.AssumeDefaultVersionWhenUnspecified = true;
+            options.DefaultApiVersion = new ApiVersion(1, 0);
+            options.ReportApiVersions = true;
+            options.ApiVersionReader = new UrlSegmentApiVersionReader();
+        });
+
+        builder.Services.AddVersionedApiExplorer(options =>
+        {
+            options.GroupNameFormat = "'v'VVV";
+            options.SubstituteApiVersionInUrl = true;
+        });
+
+        builder.Services.AddSingleton<IAuthChecker, InMemoryAuthChecker>(); 
+
         var app = builder.Build();
 
-        // Enable Swagger UI in development
         if (app.Environment.IsDevelopment())
         {
             app.UseSwagger();
-            app.UseSwaggerUI();
+            app.UseSwaggerUI(c =>
+            {
+                c.DefaultModelsExpandDepth(-1);
+            });
         }
 
         app.UseHttpsRedirection();
 
-        // API Key authentication middleware
-        app.Use(async (context, next) =>
-        {
-            if (!context.Request.Headers.TryGetValue("X-API-KEY", out var providedKey))
-            {
-                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await context.Response.WriteAsync("API Key is missing.");
-                return;
-            }
-
-            if (!string.Equals(providedKey, apiKey, StringComparison.Ordinal))
-            {
-                context.Response.StatusCode = StatusCodes.Status403Forbidden;
-                await context.Response.WriteAsync("Invalid API Key.");
-                return;
-            }
-
-            await next();
-        });
+        app.UseTenantApiKeyAuth();
 
         app.MapGet("/status", () =>
         {
