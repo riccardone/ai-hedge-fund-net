@@ -1,31 +1,24 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using AiHedgeFund.Api.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
-using System.Net;
-using AiHedgeFund.Api.Services;
 
 namespace AiHedgeFund.Api.Controllers.V1;
 
 [ApiController]
 [ApiVersion("1.0")]
-[Route("api/v{version:apiVersion}/{tenantId}")]
+[ApiExplorerSettings(GroupName = "v1")]
+[Route("api/v{version:apiVersion}/agents")]
 [AuthorizeTenant]
+[Authorize(Roles = "Trader,Admin")]
 public class TradingController : Controller
 {
-    [HttpGet("{agentId}")]
-    [SwaggerOperation(
-        Summary = "Get the output signal from one of the agents",
-        Description = "Fetches a signal from an agent related to a given ticker",
-        OperationId = "GetOutputFromAgent",
-        Tags = ["reads"]
-    )]
-    [SwaggerResponse((int)HttpStatusCode.OK, "OK response", typeof(string), ContentTypes = ["application/json"])]
-    [SwaggerResponse((int)HttpStatusCode.NotFound, "NOT FOUND response", typeof(string), ContentTypes = ["application/json"])]
-    [SwaggerResponse((int)HttpStatusCode.Unauthorized, "Unauthorized access - API key is missing or invalid.", typeof(object), ContentTypes = ["application/json"])]
-    public IActionResult GetOutputFromAgent(
-        [FromRoute] string tenantId,
-        [FromRoute] string agentId,
-        [FromRoute] string ticker)
+    [HttpGet("{agentId}/tickers/{ticker}")]
+    [MapToApiVersion("1.0")]
+    [SwaggerOperation(Summary = "Get output signal", Description = "Fetch signal from agent")]
+    public IActionResult Get(string agentId, string ticker)
     {
-        return new OkObjectResult("test");
+        var tenantId = HttpContext.Items["TenantId"]?.ToString();
+        return Ok(new { agentId, ticker, tenantId });
     }
 }

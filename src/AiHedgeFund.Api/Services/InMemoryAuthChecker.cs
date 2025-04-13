@@ -4,39 +4,30 @@ namespace AiHedgeFund.Api.Services;
 
 public class InMemoryAuthChecker : IAuthChecker
 {
-    private readonly Dictionary<string, string> _tenantApiKeys = new()
+    private readonly Dictionary<string, (string ApiKey, string[] Roles)> _tenantKeys = new()
     {
-        { "tenant-123", "secret-key-123" },
-        { "tenant-abc", "secret-key-abc" }
+        { "tenant-a", ("api-key-123", new[] { "Trader", "Admin" }) },
+        { "tenant-b", ("api-key-456", new[] { "Viewer" }) }
     };
 
-    public bool CheckApiKey(string tenantId, string apiKey)
+    public bool Check(string tenantId, string apiKey, out string[] errors, out string[] roles)
     {
-        return _tenantApiKeys.TryGetValue(tenantId, out var storedKey) && storedKey == apiKey;
-    }
+        errors = Array.Empty<string>();
+        roles = Array.Empty<string>();
 
-    public bool Check(string tenantId, string apiKey, out List<string> errors, AuthorizationDelegate? func = null)
-    {
-        errors = new List<string>();
-
-        if (!_tenantApiKeys.TryGetValue(tenantId, out var storedKey))
+        if (!_tenantKeys.TryGetValue(tenantId, out var entry))
         {
-            errors.Add("Tenant ID not found.");
+            errors = new[] { "Unknown tenant" };
             return false;
         }
 
-        if (storedKey != apiKey)
+        if (!string.Equals(entry.ApiKey, apiKey, StringComparison.Ordinal))
         {
-            errors.Add("Invalid API key.");
+            errors = new[] { "Invalid API key" };
             return false;
         }
 
-        if (func != null && !func(apiKey, out var funcError))
-        {
-            errors.Add(funcError);
-            return false;
-        }
-
+        roles = entry.Roles;
         return true;
     }
 }

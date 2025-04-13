@@ -2,8 +2,5 @@
 
 public interface IAuthChecker
 {
-    bool CheckApiKey(string tenantId, string apiKey);
-    bool Check(string tenantId, string apiKey, out List<string> errors, AuthorizationDelegate? func = null);
+    bool Check(string tenantId, string apiKey, out string[] errors, out string[] roles);
 }
-
-public delegate bool AuthorizationDelegate(string apiKey, out string error);

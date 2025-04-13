@@ -1,5 +1,6 @@
-﻿using AiHedgeFund.Contracts;
+﻿using System.Security.Claims;
 using NLog;
+using AiHedgeFund.Contracts;
 
 namespace AiHedgeFund.Api.Middleware;
 
@@ -27,7 +28,7 @@ public class TenantApiKeyAuthMiddleware
         var tenantId = providedTenant.ToString();
         var apiKey = providedKey.ToString();
 
-        if (!authChecker.Check(tenantId, apiKey, out var errors))
+        if (!authChecker.Check(tenantId, apiKey, out var errors, out var roles))
         {
             Logger.Warn("Authentication failed for tenant {0}: {1}", tenantId, string.Join("; ", errors));
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
@@ -35,9 +36,22 @@ public class TenantApiKeyAuthMiddleware
             return;
         }
 
-        Logger.Debug("Authenticated tenant {0} successfully", tenantId);
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, tenantId),
+            new("TenantId", tenantId)
+        };
+
+        claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
+
+        context.User = new ClaimsPrincipal(new ClaimsIdentity(claims, "HeaderAuth"));
         context.Items["TenantId"] = tenantId;
 
+        Logger.Debug("User roles: {0}", string.Join(", ", context.User.Claims
+            .Where(c => c.Type == ClaimTypes.Role)
+            .Select(c => c.Value)));
+
+        Logger.Debug("Authenticated tenant {0} with roles: {1}", tenantId, string.Join(", ", roles));
         await _next(context);
     }
 }
