@@ -27,7 +27,7 @@ internal class Program
                 services.AddSingleton<IDataReader, AlphaVantageDataReader>();
                 services.AddSingleton<IPriceVolumeProvider, FakePriceVolumeProvider>();
                 services.AddSingleton<IValuationEngine, DefaultValuationEngine>();
-                services.AddSingleton<IHttpLib, OpenAiChatter>();
+                services.AddSingleton<IHttpLib, OpenAiHttp>();
                 services.AddSingleton<TradingInitializer>();
                 services.AddSingleton<IAgentRegistry, AgentRegistry>();
                 services.AddSingleton<BenGrahamAgent>();

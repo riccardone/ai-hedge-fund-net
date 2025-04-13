@@ -4,12 +4,12 @@ using NLog;
 
 namespace AiHedgeFund.Data;
 
-public class OpenAiChatter : IHttpLib
+public class OpenAiHttp : IHttpLib
 {
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
     private readonly HttpClient _client;
 
-    public OpenAiChatter(IHttpClientFactory clientFactory)
+    public OpenAiHttp(IHttpClientFactory clientFactory)
     {
         _client = clientFactory.CreateClient("OpenAI");
     }
