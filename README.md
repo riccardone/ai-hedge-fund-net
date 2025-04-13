@@ -1,3 +1,20 @@
+## Download and Run the Program
+
+1. Go to the **Releases** section and download the latest release.
+2. Run the program with `--help` or `-h` to see usage instructions:
+
+```bash
+> AiHedgeFund.Console --help
+```
+
+3. Run the program by specifying one or more agents and one or more stock tickers:
+
+```bash
+> AiHedgeFund.Console --agent cathie_wood ben_graham --tickers MSFT AAPL
+```
+
+---
+
 # ai-hedge-fund-net
 
 **ai-hedge-fund-net** is a .NET program that provides trading signals by analyzing stocks using multiple AI agents. Each agent applies a different investment philosophy to decide whether a stock is a **buy**, **hold**, or **sell**. Agents also provide their **reasoning**, **confidence score**, **key metrics**, and **specific rules** behind each decision.
@@ -42,23 +59,6 @@ Example `appsettings.json`:
     "ApiKey": "your-alpha-vantage-api-key"
   }
 }
-```
-
----
-
-## Download and Run the Program
-
-1. Go to the **Releases** section and download the latest release.
-2. Run the program with `--help` or `-h` to see usage instructions:
-
-```bash
-> AiHedgeFund.Console --help
-```
-
-3. Run the program by specifying one or more agents and one or more stock tickers:
-
-```bash
-> AiHedgeFund.Console --agent cathie_wood ben_graham --tickers MSFT AAPL
 ```
 
 ---
