@@ -1,9 +1,12 @@
-﻿using System.Text.Json;
+﻿using NLog;
+using System.Reflection;
+using System.Text.Json;
 
 namespace AiHedgeFund.Data;
 
-public class FileDataManager 
+public class FileDataManager
 {
+    private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
     private readonly string _storageFolder;
     private readonly JsonSerializerOptions _jsonOptions;
 
@@ -19,11 +22,30 @@ public class FileDataManager
         };
     }
 
-    public void Save<T>(T data, string key)
+    public bool TrySave<T>(T data, string key)
     {
-        var path = GetFilePath(key);
-        var json = JsonSerializer.Serialize(data, _jsonOptions);
-        File.WriteAllText(path, json);
+        try
+        {
+            if (data == null)
+                throw new ArgumentNullException(nameof(data), "Can't save null object");
+
+            // check if object has all nulls
+            var allPropsNull = typeof(T)
+                .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .All(p => p.GetValue(data) == null);
+            if (allPropsNull)
+                throw new InvalidOperationException("Can't save object with null data");
+
+            var path = GetFilePath(key);
+            var json = JsonSerializer.Serialize(data, _jsonOptions);
+            File.WriteAllText(path, json);
+            return true;
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Error while {nameof(FileDataManager)}/{nameof(TrySave)}: {e.GetBaseException().Message}");
+            return false;
+        }
     }
 
     public T? Read<T>(string key)

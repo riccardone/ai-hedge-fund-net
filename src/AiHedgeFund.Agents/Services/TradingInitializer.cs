@@ -1,4 +1,5 @@
 ﻿using AiHedgeFund.Contracts;
+using AiHedgeFund.Contracts.Model;
 using NLog;
 
 namespace AiHedgeFund.Agents.Services;
@@ -6,30 +7,31 @@ namespace AiHedgeFund.Agents.Services;
 public class TradingInitializer
 {
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
-    private readonly AppArguments _args;
     private readonly IDataReader _dataReader;
 
-    public TradingInitializer(AppArguments args, IDataReader dataReader)
+    public TradingInitializer(IDataReader dataReader)
     {
-        _args = args;
         _dataReader = dataReader;
     }
 
-    public async Task<TradingWorkflowState> InitializeAsync()
+    public async Task<TradingWorkflowState> InitializeAsync(List<string> agentNames, List<string> tickers, RiskLevel riskLevel, DateTime? startDate, DateTime? endDate)
     {
+        var actualEndDate = endDate ?? DateTime.UtcNow;
+        var actualStartDate = startDate ?? actualEndDate.AddMonths(-3);
+
         var state = new TradingWorkflowState
         {
             //InitialCash = _args.InitialCash,
-            Tickers = _args.Tickers,
-            SelectedAnalysts = _args.AgentNames,
-            RiskLevel = _args.RiskLevel,
-            StartDate = _args.StartDate,
-            EndDate = _args.EndDate,
+            Tickers = tickers,
+            SelectedAnalysts = agentNames,
+            RiskLevel = riskLevel,
+            StartDate = actualStartDate,
+            EndDate = actualEndDate,
             AnalystSignals = new Dictionary<string, IDictionary<string, object>>(),
             TradeDecisions = new Dictionary<string, TradeDecision?>()
         };
 
-        foreach (var argsAgentName in _args.AgentNames)
+        foreach (var argsAgentName in agentNames)
         {
             state.TradeDecisions.Add(argsAgentName, null);
             state.AnalystSignals.Add(argsAgentName, new Dictionary<string, object>());

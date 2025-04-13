@@ -1,15 +1,9 @@
-﻿using AiHedgeFund.Contracts;
-using AiHedgeFund.Contracts.Model;
+﻿using AiHedgeFund.Contracts.Model;
 
-namespace AiHedgeFund.Agents.Services;
+namespace AiHedgeFund.Console;
 
 public class AppArguments
 {
-    private static readonly List<string> AvailableAgents = new()
-    {
-        "charlie_munger", "stanley_druckenmiller", "ben_graham", "cathie_wood", "bill_ackman", "warren_buffett"
-    };
-
     public List<string> AgentNames { get; set; } = new();
     public List<string> Tickers { get; set; } = new();
     public DateTime StartDate { get; set; } = DateTime.Today.AddMonths(-3);
@@ -19,12 +13,6 @@ public class AppArguments
 
     public AppArguments(string[] args)
     {
-        if (args.Contains("--help") || args.Contains("-h") || args.Length == 0)
-        {
-            PrintHelp();
-            Environment.Exit(0);
-        }
-
         for (int i = 0; i < args.Length; i++)
         {
             switch (args[i])
@@ -69,22 +57,5 @@ public class AppArguments
 
         if (StartDate > EndDate)
             throw new ArgumentException("StartDate must be before EndDate.");
-    }
-
-    private static void PrintHelp()
-    {
-        Console.WriteLine("Usage:");
-        Console.WriteLine("  --agent [names]        : One or more agent names to run (default: charlie_munger)");
-        Console.WriteLine("                           Available agents:");
-        foreach (var agent in AvailableAgents)
-        {
-            Console.WriteLine($"                             - {agent}");
-        }
-
-        Console.WriteLine("  --tickers [symbols]    : One or more stock tickers (e.g., MSFT AAPL TSLA)");
-        Console.WriteLine("  --start-date YYYY-MM-DD: Optional start date (default: 3 months ago)");
-        Console.WriteLine("  --end-date YYYY-MM-DD  : Optional end date (default: today)");
-        Console.WriteLine("  --risk-level [level]   : Optional valuation risk level: low, medium, or high (default: medium)");
-        Console.WriteLine("  --help or -h           : Show this help message and exit");
     }
 }

@@ -1,15 +1,19 @@
-﻿using Microsoft.Extensions.Hosting;
+﻿using AiHedgeFund.Agents;
+using AiHedgeFund.Agents.Services;
+using Microsoft.Extensions.Hosting;
 
-namespace AiHedgeFund.Agents.Services;
+namespace AiHedgeFund.Console;
 
 public class MainApp : IHostedService
 {
+    private readonly AppArguments _appArguments;
     private readonly TradingInitializer _initializer;
     private readonly PortfolioManager _portfolio;
     private readonly RiskManagerAgent _riskAgent;
 
-    public MainApp(TradingInitializer initializer, PortfolioManager portfolio, RiskManagerAgent riskAgent)
+    public MainApp(AppArguments appArguments, TradingInitializer initializer, PortfolioManager portfolio, RiskManagerAgent riskAgent)
     {
+        _appArguments = appArguments;
         _initializer = initializer;
         _portfolio = portfolio;
         _riskAgent = riskAgent;
@@ -17,7 +21,8 @@ public class MainApp : IHostedService
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        var state = await _initializer.InitializeAsync();
+        var state = await _initializer.InitializeAsync(_appArguments.AgentNames, _appArguments.Tickers,
+            _appArguments.RiskLevel, _appArguments.StartDate, _appArguments.EndDate);
 
         foreach (var agent in state.SelectedAnalysts)
             _portfolio.Evaluate(agent, state);

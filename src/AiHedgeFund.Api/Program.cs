@@ -6,7 +6,13 @@ using NLog.Extensions.Logging;
 using AiHedgeFund.Contracts;
 using AiHedgeFund.Api.Services;
 using Microsoft.AspNetCore.Authentication;
-using Swashbuckle.AspNetCore.SwaggerGen;
+using AiHedgeFund.Agents.Registry;
+using AiHedgeFund.Agents.Services;
+using AiHedgeFund.Agents;
+using AiHedgeFund.Data;
+using AiHedgeFund.Data.AlphaVantage;
+using AiHedgeFund.Data.Mock;
+using System.Net.Http.Headers;
 
 namespace AiHedgeFund.Api;
 
@@ -33,6 +39,39 @@ public class Program
             options.DefaultApiVersion = new ApiVersion(1, 0);
             options.ReportApiVersions = true;
             options.ApiVersionReader = new UrlSegmentApiVersionReader();
+        });
+
+        var configuration = BuildConfig();
+        builder.Services.AddSingleton<IDataReader, AlphaVantageDataReader>();
+        builder.Services.AddSingleton<IPriceVolumeProvider, FakePriceVolumeProvider>();
+        builder.Services.AddSingleton<IValuationEngine, DefaultValuationEngine>();
+        builder.Services.AddSingleton<IHttpLib, OpenAiChatter>();
+        builder.Services.AddSingleton<TradingInitializer>();
+        builder.Services.AddSingleton<IAgentRegistry, AgentRegistry>();
+        builder.Services.AddSingleton<BenGrahamAgent>();
+        builder.Services.AddSingleton<CathieWoodAgent>();
+        builder.Services.AddSingleton<BillAckmanAgent>();
+        builder.Services.AddSingleton<CharlieMungerAgent>();
+        builder.Services.AddSingleton<StanleyDruckenmillerAgent>();
+        builder.Services.AddSingleton<WarrenBuffettAgent>();
+        builder.Services.AddSingleton<RiskManagerAgent>();
+        builder.Services.AddHostedService<AgentBootstrapper>();
+        builder.Services.AddTransient<PortfolioManager>();
+        builder.Services.AddHttpClient();
+        builder.Services.AddHttpClient("AlphaVantage", client =>
+        {
+            var apiKey = configuration["ApiSettings:AlphaVantage:ApiKey"];
+            if (string.IsNullOrEmpty(apiKey))
+                throw new InvalidOperationException("AlphaVantage API key is missing in configuration.");
+            client.BaseAddress = new Uri("https://www.alphavantage.co");
+        }).AddHttpMessageHandler(() => new AlphaVantageAuthHandler(configuration["AlphaVantage:ApiKey"]));
+        builder.Services.AddHttpClient("OpenAI", client =>
+        {
+            var apiKey = configuration["ApiSettings:OpenAI:ApiKey"];
+            if (string.IsNullOrEmpty(apiKey))
+                throw new InvalidOperationException("OpenAI API key is missing in configuration.");
+            client.BaseAddress = new Uri("https://api.openai.com/v1/");
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
         });
 
         builder.Services.AddVersionedApiExplorer(options =>
@@ -157,5 +196,16 @@ public class Program
 
         app.Run();
         LogManager.Shutdown();
+    }
+
+    private static IConfigurationRoot BuildConfig()
+    {
+        var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "dev";
+        var builder = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
+            .AddJsonFile($"appsettings.{env}.json", optional: true, reloadOnChange: false)
+            .AddEnvironmentVariables();
+        return builder.Build();
     }
 }

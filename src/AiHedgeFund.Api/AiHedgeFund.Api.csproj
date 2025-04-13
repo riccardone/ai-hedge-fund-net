@@ -32,6 +32,7 @@
   <ItemGroup>
     <ProjectReference Include="..\AiHedgeFund.Agents\AiHedgeFund.Agents.csproj" />
     <ProjectReference Include="..\AiHedgeFund.Contracts\AiHedgeFund.Contracts.csproj" />
+    <ProjectReference Include="..\AiHedgeFund.Data\AiHedgeFund.Data.csproj" />
   </ItemGroup>
 
 </Project>

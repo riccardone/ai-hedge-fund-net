@@ -19,6 +19,12 @@ internal class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Contains("--help") || args.Contains("-h") || args.Length == 0)
+        {
+            PrintHelp();
+            Environment.Exit(0);
+        }
+
         var appArgs = new AppArguments(args);
         var host = Host.CreateDefaultBuilder(args)
             .ConfigureServices((context, services) =>
@@ -79,5 +85,27 @@ internal class Program
             .AddJsonFile($"appsettings.{env}.json", optional: true, reloadOnChange: false)
             .AddEnvironmentVariables();
         return builder.Build();
+    }
+
+    private static readonly List<string> AvailableAgents = new()
+    {
+        "charlie_munger", "stanley_druckenmiller", "ben_graham", "cathie_wood", "bill_ackman", "warren_buffett"
+    };
+
+    private static void PrintHelp()
+    {
+        System.Console.WriteLine("Usage:");
+        System.Console.WriteLine("  --agent [names]        : One or more agent names to run (default: charlie_munger)");
+        System.Console.WriteLine("                           Available agents:");
+        foreach (var agent in AvailableAgents)
+        {
+            System.Console.WriteLine($"                             - {agent}");
+        }
+
+        System.Console.WriteLine("  --tickers [symbols]    : One or more stock tickers (e.g., MSFT AAPL TSLA)");
+        System.Console.WriteLine("  --start-date YYYY-MM-DD: Optional start date (default: 3 months ago)");
+        System.Console.WriteLine("  --end-date YYYY-MM-DD  : Optional end date (default: today)");
+        System.Console.WriteLine("  --risk-level [level]   : Optional valuation risk level: low, medium, or high (default: medium)");
+        System.Console.WriteLine("  --help or -h           : Show this help message and exit");
     }
 }

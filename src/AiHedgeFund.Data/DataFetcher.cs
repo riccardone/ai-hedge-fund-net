@@ -29,7 +29,12 @@ public class DataFetcher
 
         if (raw == null && TryFetchData(query, out raw))
         {
-            _dataManager.Save(raw, key);
+            if (!_dataManager.TrySave(raw, key))
+            {
+                Logger.Error("Can't save data");
+                result = default;
+                return false;
+            }
         }
 
         if (raw == null)
