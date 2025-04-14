@@ -1,18 +1,18 @@
 ﻿using NLog;
 using System.Reflection;
 using System.Text.Json;
+using AiHedgeFund.Contracts;
 
 namespace AiHedgeFund.Data;
 
-public class FileDataManager
+public class DataRepositoryFromFileAndMemory : IDataRepository
 {
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
-    private readonly string _storageFolder;
+    private readonly string _storageFolder = "Cache"; // if more providers are using th same interface use settings from config
     private readonly JsonSerializerOptions _jsonOptions;
 
-    public FileDataManager(string storageFolder = "AlphaVantageCache")
+    public DataRepositoryFromFileAndMemory()
     {
-        _storageFolder = storageFolder;
         Directory.CreateDirectory(_storageFolder);
 
         _jsonOptions = new JsonSerializerOptions
@@ -20,6 +20,21 @@ public class FileDataManager
             WriteIndented = true,
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         };
+    }
+
+    public bool TryRead<T>(string key, out T? data)
+    {
+        try
+        {
+            data = Read<T>(key);
+            return true;
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Error while {nameof(DataRepositoryFromFileAndMemory)}/{nameof(TrySave)}: {e.GetBaseException().Message}");
+            data = default(T);
+            return false;
+        }
     }
 
     public bool TrySave<T>(T data, string key)
@@ -43,12 +58,12 @@ public class FileDataManager
         }
         catch (Exception e)
         {
-            Logger.Error($"Error while {nameof(FileDataManager)}/{nameof(TrySave)}: {e.GetBaseException().Message}");
+            Logger.Error($"Error while {nameof(DataRepositoryFromFileAndMemory)}/{nameof(TrySave)}: {e.GetBaseException().Message}");
             return false;
         }
     }
 
-    public T? Read<T>(string key)
+    private T? Read<T>(string key)
     {
         var path = GetFilePath(key);
         if (!File.Exists(path))

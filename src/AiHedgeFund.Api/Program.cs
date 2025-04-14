@@ -13,6 +13,7 @@ using AiHedgeFund.Data;
 using AiHedgeFund.Data.AlphaVantage;
 using AiHedgeFund.Data.Mock;
 using System.Net.Http.Headers;
+using DataFetcherFromMemoryOrRemote = AiHedgeFund.Api.Services.DataFetcherFromMemoryOrRemote;
 
 namespace AiHedgeFund.Api;
 
@@ -45,6 +46,7 @@ public class Program
         builder.Services.AddSingleton<IDataReader, AlphaVantageDataReader>();
         builder.Services.AddSingleton<IPriceVolumeProvider, FakePriceVolumeProvider>();
         builder.Services.AddSingleton<IValuationEngine, DefaultValuationEngine>();
+        builder.Services.AddSingleton<IDataFetcher, DataFetcherFromMemoryOrRemote>();
         builder.Services.AddSingleton<IHttpLib, OpenAiChatter>();
         builder.Services.AddSingleton<TradingInitializer>();
         builder.Services.AddSingleton<IAgentRegistry, AgentRegistry>();
@@ -64,7 +66,7 @@ public class Program
             if (string.IsNullOrEmpty(apiKey))
                 throw new InvalidOperationException("AlphaVantage API key is missing in configuration.");
             client.BaseAddress = new Uri("https://www.alphavantage.co");
-        }).AddHttpMessageHandler(() => new AlphaVantageAuthHandler(configuration["AlphaVantage:ApiKey"]));
+        }).AddHttpMessageHandler(() => new AlphaVantageAuthHandler(configuration["ApiSettings:AlphaVantage:ApiKey"]));
         builder.Services.AddHttpClient("OpenAI", client =>
         {
             var apiKey = configuration["ApiSettings:OpenAI:ApiKey"];
