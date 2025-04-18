@@ -19,7 +19,7 @@ public class TradingWorkflowState
     //public decimal InitialCash { get; set; }
     public List<string> Tickers { get; set; } = new(); 
     public Portfolio Portfolio { get; set; } = new();
-    public Dictionary<string, IDictionary<string, object>>? AnalystSignals { get; set; }
+    public Dictionary<string, IDictionary<string, TradeSignal>>? AnalystSignals { get; set; }
     public Dictionary<string, TradeDecision?>? TradeDecisions { get; set; }
     public Dictionary<string, Dictionary<string, RiskAssessment>> RiskAssessments { get; set; } = new();
 }

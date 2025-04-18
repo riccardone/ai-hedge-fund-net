@@ -1,20 +1,19 @@
 ﻿using System.Collections.Concurrent;
+using System.Reflection;
 using System.Text.Json;
 using AiHedgeFund.Contracts;
 using NLog;
 
-namespace AiHedgeFund.Data;
+namespace AiHedgeFund.Api.Services;
 
-public class DataFetcher : IDataFetcher
+public class DataFetcherFromMemoryOrRemote : IDataFetcher
 {
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
-    private readonly IDataRepository _repository;
     private readonly ConcurrentDictionary<string, object?> _memoryCache = new();
     private readonly HttpClient _client;
 
-    public DataFetcher(IHttpClientFactory httpClientFactory, IDataRepository dataRepository)
+    public DataFetcherFromMemoryOrRemote(IHttpClientFactory httpClientFactory)
     {
-        _repository = dataRepository;
         _client = httpClientFactory.CreateClient("AlphaVantage");
     }
 
@@ -26,34 +25,24 @@ public class DataFetcher : IDataFetcher
             return true;
         }
 
-        if(!_repository.TryRead<TRaw>(key, out var raw))
-        {
-            result = default(T); 
-            return false;
-        }
-
-        if (raw == null && TryFetchData(query, out raw))
-        {
-            if (!_repository.TrySave(raw, key))
-            {
-                Logger.Error("Can't save data");
-                result = default;
-                return false;
-            }
-        }
-
-        if (raw == null)
+        if (!TryFetchData(query, out TRaw results))
         {
             result = default;
             return false;
         }
-        var mapped = mapper(raw);
+
+        if (results == null)
+        {
+            result = default;
+            return false;
+        }
+        var mapped = mapper(results);
         _memoryCache[key] = mapped!;
         result = mapped;
         return true;
     }
 
-    private bool TryFetchData<T>(string endpoint, out T? result) 
+    private bool TryFetchData<T>(string endpoint, out T result) 
     {
         try
         {
@@ -73,7 +62,8 @@ public class DataFetcher : IDataFetcher
             };
 
             result = JsonSerializer.Deserialize<T>(jsonString, options);
-            if (result != null) return true;
+            if(result != null && TryValidateResult(result))
+                return true;
             Logger.Warn("Deserialization returned null endpoint '{0}'", endpoint);
             return false;
         }
@@ -92,5 +82,28 @@ public class DataFetcher : IDataFetcher
 
         result = default;
         return false;
+    }
+
+    private bool TryValidateResult<T>(T result)
+    {
+        if (result == null)
+            return false;
+
+        var properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+
+        foreach (var property in properties)
+        {
+            // Only check readable properties
+            if (!property.CanRead)
+                continue;
+
+            var value = property.GetValue(result);
+            if (value == null)
+                return false;
+            // not all null
+            return true;
+        }
+
+        return true;
     }
 }

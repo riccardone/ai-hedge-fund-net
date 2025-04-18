@@ -9,12 +9,12 @@ namespace AiHedgeFund.Data.AlphaVantage;
 public class AlphaVantageDataReader : IDataReader
 {
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
-    private readonly DataFetcher _dataFetcher;
+    private readonly IDataFetcher _dataFetcher;
     private readonly IPriceVolumeProvider _priceVolumeProvider;
 
-    public AlphaVantageDataReader(IHttpClientFactory clientFactory, IPriceVolumeProvider priceVolumeProvider)
+    public AlphaVantageDataReader(IPriceVolumeProvider priceVolumeProvider, IDataFetcher dataFetcher)
     {
-        _dataFetcher = new DataFetcher(clientFactory);
+        _dataFetcher = dataFetcher;
         _priceVolumeProvider = priceVolumeProvider;
     }
 
