@@ -39,10 +39,12 @@ public class AgentsController : Controller
         foreach (var agent in state.SelectedAnalysts)
             _portfolio.Evaluate(agent, state);
 
-        _portfolio.RunRiskAssessments("risk_management_agent", state, _riskAgent);
+        // TODO
+        //_portfolio.RunRiskAssessments("risk_management_agent", state, _riskAgent);
 
-        // TODO check AnalystSignals and RiskAssessments and return them in one new model
+        var result = new AgentOutput(agentId, ticker, DateTime.UtcNow, state.AnalystSignals[agentId][ticker],
+            state.TradeDecisions[agentId], null);
 
-        return Ok(new { agentId, ticker, tenantId });
+        return Ok(result);
     }
 }

@@ -53,7 +53,7 @@ namespace AiHedgeFund.Tests
             _state = new TradingWorkflowState
             {
                 FinancialMetrics = new Dictionary<string, IEnumerable<FinancialMetrics>> { { "AAPL", metrics } },
-                AnalystSignals = new Dictionary<string, IDictionary<string, object>>(),
+                AnalystSignals = new Dictionary<string, IDictionary<string, TradeSignal>>(),
                 Portfolio = new Portfolio(),
                 Tickers = new List<string> { "AAPL" },
                 FinancialLineItems = new Dictionary<string, IEnumerable<FinancialLineItem>> { { "AAPL", _lineItems } },

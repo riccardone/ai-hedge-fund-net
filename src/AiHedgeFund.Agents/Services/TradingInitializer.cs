@@ -27,14 +27,14 @@ public class TradingInitializer
             RiskLevel = riskLevel,
             StartDate = actualStartDate,
             EndDate = actualEndDate,
-            AnalystSignals = new Dictionary<string, IDictionary<string, object>>(),
+            AnalystSignals = new Dictionary<string, IDictionary<string, TradeSignal>>(),
             TradeDecisions = new Dictionary<string, TradeDecision?>()
         };
 
         foreach (var argsAgentName in agentNames)
         {
             state.TradeDecisions.Add(argsAgentName, null);
-            state.AnalystSignals.Add(argsAgentName, new Dictionary<string, object>());
+            state.AnalystSignals.Add(argsAgentName, new Dictionary<string, TradeSignal>());
         }
 
         foreach (var ticker in state.Tickers)
