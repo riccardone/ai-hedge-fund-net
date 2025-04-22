@@ -17,16 +17,16 @@
 
 # ai-hedge-fund-net
 
-**ai-hedge-fund-net** is a .NET program that provides trading signals by analyzing stocks using multiple AI agents. Each agent applies a different investment philosophy to decide whether a stock is a **buy**, **hold**, or **sell**. Agents also provide their **reasoning**, **confidence score**, **key metrics**, and **specific rules** behind each decision.
+**ai-hedge-fund-net** is a .NET alghoritmic program that provides trading signals by analyzing stocks using multiple AI agents. Each agent applies a different investment philosophy to decide whether a stock is a **buy**, **hold**, or **sell**. Agents also provide their **reasoning**, **confidence score**, **key metrics**, and **specific rules** behind each decision.
 
 Currently, the following agents are implemented:
 
-- `charlie_munger`
-- `stanley_druckenmiller`
-- `ben_graham`
-- `cathie_wood`
-- `bill_ackman`
-- `warren_buffett`
+- `charlie_munger` (quality + management judgment)
+- `stanley_druckenmiller` (macro, momentum, sentiment)
+- `ben_graham`  (deep value, margin of safety, balance sheet strength)
+- `cathie_wood` (innovation, tech disruption)
+- `bill_ackman` (activist investing, risk arbitrage)
+- `warren_buffett` (value investing, moat, long-term)
 
 Each agent integrates with an LLM (Large Language Model) trained for financial reasoning to generate the insights behind its signals.
 
