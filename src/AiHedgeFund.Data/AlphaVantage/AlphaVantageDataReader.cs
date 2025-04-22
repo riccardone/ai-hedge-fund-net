@@ -185,6 +185,9 @@ public class AlphaVantageDataReader : IDataReader
                     tmpMetrics.EarningsPerShareGrowth = er.ReportedEPS;
                 }
 
+                tmpMetrics.Period = period;
+                tmpMetrics.EndDate = balanceReports[i].FiscalDateEnding;
+
                 internalMetrics.Add(tmpMetrics);
             }
         }

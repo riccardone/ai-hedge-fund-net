@@ -84,7 +84,7 @@ public class CathieWoodAgent
     {
         var score = 0;
         var details = new List<string>();
-        var ordered = metrics.OrderBy(m => m.Period).ToList();
+        var ordered = metrics.OrderBy(m => m.EndDate).ToList();
 
         var revenueGrowths = ordered.Select(m => m.RevenueGrowth).Where(x => x.HasValue).Select(x => x.Value).ToList();
         if (revenueGrowths.Count >= 2)

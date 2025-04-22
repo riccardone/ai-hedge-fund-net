@@ -36,7 +36,7 @@ public class StanleyDruckenmillerAgent
                 continue;
             }
 
-            var marketCap = metrics.OrderByDescending(m => m.Period).FirstOrDefault()?.MarketCap;
+            var marketCap = metrics.OrderByDescending(m => m.EndDate).FirstOrDefault()?.MarketCap;
             if (marketCap == null)
             {
                 Logger.Warn($"No market cap for {ticker}");
@@ -118,7 +118,7 @@ public class StanleyDruckenmillerAgent
         }
 
         // EPS Growth
-        var ordered = metrics.OrderBy(m => m.Period).ToList();
+        var ordered = metrics.OrderBy(m => m.EndDate).ToList();
         var epsList = ordered.Where(e => e.EarningsPerShareGrowth.HasValue).Select(li => li.EarningsPerShareGrowth).ToList();
         if (epsList.Count() >= 2)
         {
@@ -184,7 +184,7 @@ public class StanleyDruckenmillerAgent
         }
 
         // 1. Debt-to-Equity
-        var ordered = metrics.OrderBy(m => m.Period).ToList();
+        var ordered = metrics.OrderBy(m => m.EndDate).ToList();
         var debts = ordered.Where(t => t.TotalDebt.HasValue).Select(li => li.TotalDebt.Value).ToList();
         var equities = ordered.Where(t => t.TotalShareholderEquity.HasValue).Select(li => li.TotalShareholderEquity.Value).ToList();
 
@@ -305,7 +305,7 @@ public class StanleyDruckenmillerAgent
     private FinancialAnalysisResult AnalyzeInsiderActivity(IEnumerable<FinancialMetrics> metrics)
     {
         // TODO integrate with a different financial source to get insider trading
-        var ordered = metrics.OrderBy(m => m.Period).ToList();
+        var ordered = metrics.OrderBy(m => m.EndDate).ToList();
         var insiderTrades = ordered.Where(t => t.TransactionSharesFromInsiders.HasValue).Select(li => li.TransactionSharesFromInsiders.Value).ToList();
 
         var details = new List<string>();

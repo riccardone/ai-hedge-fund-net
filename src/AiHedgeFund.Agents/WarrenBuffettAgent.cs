@@ -60,7 +60,7 @@ public class WarrenBuffettAgent
 
             if (valuationSummary.IntrinsicValue.HasValue && marketCap.HasValue && marketCap > 0)
             {
-                marginOfSafety = (valuationSummary.IntrinsicValue.Value * metrics.OrderByDescending(m => m.Period).First().OutstandingShares ?? 1) - marketCap.Value;
+                marginOfSafety = (valuationSummary.IntrinsicValue.Value * metrics.OrderByDescending(m => m.EndDate).First().OutstandingShares ?? 1) - marketCap.Value;
                 marginOfSafety /= marketCap.Value;
 
                 if (marginOfSafety > 0.3m)
@@ -82,7 +82,7 @@ public class WarrenBuffettAgent
             Logger.Info($"{ticker} Consistency {consistency.Score}/{consistency.MaxScore}: {string.Join("; ", consistency.Details)}");
             Logger.Info($"{ticker} Intrinsic Value: {(valuationSummary.IntrinsicValue.HasValue ? valuationSummary.IntrinsicValue.Value.ToString("C2") : "n/a")}");
             Logger.Info($"{ticker} Margin of Safety: {(marginOfSafety.HasValue ? marginOfSafety.Value.ToString("P1") : "n/a")}");
-            Logger.Info($"{ticker} Signal: {signal}");
+            //Logger.Info($"{ticker} Signal: {signal}");
 
             if (TryGenerateOutput(ticker, fundamentals, consistency, valuationSummary, totalScore, maxScore, out var tradeSignal))
                 signals.Add(tradeSignal);
@@ -106,7 +106,7 @@ public class WarrenBuffettAgent
     /// <returns></returns>
     private FinancialAnalysisResult AnalyzeFundamentals(IEnumerable<FinancialMetrics> metrics)
     {
-        var latest = metrics.MaxBy(m => m.Period);
+        var latest = metrics.MaxBy(m => m.EndDate);
         if (latest == null)
             return new FinancialAnalysisResult(0, new[] { "No recent financial metrics available." });
 
@@ -118,7 +118,7 @@ public class WarrenBuffettAgent
             if (latest.ReturnOnEquity > 0.15m)
             {
                 score += 2;
-                details.Add($"Strong ROE of {latest.ReturnOnEquity:P1}");
+                details.Add($"Strong ROE of {latest.ReturnOnEquity:P1}, reflecting efficient capital use");
             }
             else
             {
@@ -192,10 +192,11 @@ public class WarrenBuffettAgent
     /// </summary>
     /// <param name="metrics"></param>
     /// <param name="lineItems"></param>
+    /// <param name="riskLevel"></param>
     /// <returns></returns>
     private FinancialAnalysisResult AnalyzeConsistency(IEnumerable<FinancialMetrics> metrics, RiskLevel riskLevel)
     {
-        var ordered = metrics.OrderBy(m => m.Period).ToList(); // Oldest to newest
+        var ordered = metrics.OrderBy(m => m.EndDate).ToList(); // Oldest to newest
         var earnings = ordered
             .Where(m => m.NetIncome.HasValue)
             .Select(m => m.NetIncome.Value)

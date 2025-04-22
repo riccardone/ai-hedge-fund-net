@@ -39,7 +39,7 @@ public class CharlieMungerAgent
                 continue;
             }
 
-            var marketCap = metrics.OrderByDescending(m => m.Period).FirstOrDefault()?.MarketCap;
+            var marketCap = metrics.OrderByDescending(m => m.EndDate).FirstOrDefault()?.MarketCap;
             if (marketCap == null)
             {
                 Logger.Warn($"No market cap for {ticker}");
@@ -102,7 +102,7 @@ public class CharlieMungerAgent
             return result;
         }
 
-        var ordered = metrics.OrderBy(m => m.Period).ToList();
+        var ordered = metrics.OrderBy(m => m.EndDate).ToList();
         if (ordered.Count < 5)
         {
             result.AddDetail("Insufficient data to analyze business predictability (need 5+ years)");
@@ -361,7 +361,7 @@ public class CharlieMungerAgent
             return result;
         }
 
-        var ordered = metrics.OrderBy(m => m.Period).ToList();
+        var ordered = metrics.OrderBy(m => m.EndDate).ToList();
         if (ordered.Count < 5)
         {
             result.AddDetail("Insufficient data to analyze business predictability (need 5+ years)");
@@ -591,7 +591,7 @@ public class CharlieMungerAgent
             return new FinancialAnalysisResult(0, new[] { "Insufficient data to analyze moat strength" }, maxScore);
         }
 
-        var ordered = metrics.OrderBy(m => m.Period).ToList();
+        var ordered = metrics.OrderBy(m => m.EndDate).ToList();
 
         // 1. ROIC Analysis
         var roicValues = ordered.Where(li => li.ReturnOnInvestedCapital.HasValue).Select(m => m.ReturnOnInvestedCapital).ToList();

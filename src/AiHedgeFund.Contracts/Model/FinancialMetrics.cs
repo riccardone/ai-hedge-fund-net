@@ -6,7 +6,8 @@ public class FinancialMetrics
 {
     public string Ticker { get; set; }
     public string ReportPeriod { get; set; }
-    public string Period { get; set; }
+    public string Period { get; set; } = "ttm";
+    public DateTime EndDate { get; set; }
     public string Currency { get; set; } 
     public decimal? MarketCap { get; set; }
     public decimal? EnterpriseValue { get; set; }

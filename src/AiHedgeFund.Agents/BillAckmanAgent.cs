@@ -87,7 +87,7 @@ public class BillAckmanAgent
             return new FinancialAnalysisResult(0, result.Details, maxScore);
         }
 
-        var ordered = metrics.OrderBy(m => m.Period).ToList();
+        var ordered = metrics.OrderBy(m => m.EndDate).ToList();
 
         // Revenue growth
         var revenues = ordered.Where(m => m.TotalRevenue.HasValue).Select(li => li.TotalRevenue).ToList();
@@ -195,7 +195,7 @@ public class BillAckmanAgent
             return new FinancialAnalysisResult(0, result.Details, maxScore);
         }
 
-        var orderedMetrics = metrics.OrderBy(m => m.Period).ToList();
+        var orderedMetrics = metrics.OrderBy(m => m.EndDate).ToList();
 
         // --- Debt-to-Equity ---
         var debtToEquity = orderedMetrics
