@@ -44,18 +44,15 @@ jobs:
       - name: Generate release notes
         id: changelog
         run: |
-          echo "changelog<<EOF" >> $GITHUB_OUTPUT
-          git log --pretty=format:"- %s" $(git describe --tags --abbrev=0)^..HEAD >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT            
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
-          body: ${{ steps.changelog.outputs.changelog }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_URL="https://github.com/${{ github.repository }}"
+          {
+            echo "changelog<<EOF"
+            echo "### Changelog"
+            echo ""
+            git log --pretty=format:"- \`%s\` ([%h](${REPO_URL}/commit/%H))" $(git describe --tags --abbrev=0)^..HEAD
+            echo ""
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"        
 
       - name: Upload release artifacts
         uses: softprops/action-gh-release@v1
