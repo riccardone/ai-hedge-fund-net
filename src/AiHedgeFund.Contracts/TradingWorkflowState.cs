@@ -1,4 +1,5 @@
-﻿using AiHedgeFund.Contracts.Model;
+﻿using System.Collections.ObjectModel;
+using AiHedgeFund.Contracts.Model;
 
 namespace AiHedgeFund.Contracts;
 
@@ -19,7 +20,32 @@ public class TradingWorkflowState
     //public decimal InitialCash { get; set; }
     public List<string> Tickers { get; set; } = new(); 
     public Portfolio Portfolio { get; set; } = new();
-    public Dictionary<string, IDictionary<string, object>>? AnalystSignals { get; set; }
+    private readonly Dictionary<string, IDictionary<string, AgentReport>> _analystSignalsInternal = new Dictionary<string, IDictionary<string, AgentReport>>();
+    public ReadOnlyDictionary<string, IDictionary<string, AgentReport>> AnalystSignals => new ReadOnlyDictionary<string, IDictionary<string, AgentReport>>(_analystSignalsInternal);
+
+    public void AddOrUpdateAgentReport<T>(AgentReport agentReport)
+    {
+        if (agentReport?.TradeSignal == null || string.IsNullOrEmpty(agentReport.TradeSignal.Ticker))
+            throw new ArgumentException($"{nameof(agentReport)} or its TradeSignal is null/invalid");
+
+        var agentKey = typeof(T).Name.ToSnakeCase();
+
+        if (!_analystSignalsInternal.ContainsKey(agentKey) || _analystSignalsInternal[agentKey] == null)
+            _analystSignalsInternal[agentKey] = new Dictionary<string, AgentReport>();
+
+        _analystSignalsInternal[agentKey][agentReport.TradeSignal.Ticker] = agentReport;
+    }
+
+    public void AddOrUpdateAgentReport<T>(TradeSignal tradeSignal, IEnumerable<FinancialAnalysisResult> financialAnalysisResults)
+    {
+        var displayName = typeof(T).Name.ToDisplayName();
+
+        var agentReport = new AgentReport(displayName, tradeSignal, tradeSignal.Confidence,
+            tradeSignal.Reasoning, financialAnalysisResults);
+
+        AddOrUpdateAgentReport<T>(agentReport);
+    }
+
     public Dictionary<string, TradeDecision?>? TradeDecisions { get; set; }
     public Dictionary<string, Dictionary<string, RiskAssessment>> RiskAssessments { get; set; } = new();
 }

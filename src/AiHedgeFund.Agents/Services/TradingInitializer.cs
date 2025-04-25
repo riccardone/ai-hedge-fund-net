@@ -1,4 +1,5 @@
 ﻿using AiHedgeFund.Contracts;
+using AiHedgeFund.Contracts.Model;
 using NLog;
 
 namespace AiHedgeFund.Agents.Services;
@@ -25,15 +26,8 @@ public class TradingInitializer
             RiskLevel = _args.RiskLevel,
             StartDate = _args.StartDate,
             EndDate = _args.EndDate,
-            AnalystSignals = new Dictionary<string, IDictionary<string, object>>(),
             TradeDecisions = new Dictionary<string, TradeDecision?>()
         };
-
-        foreach (var argsAgentName in _args.AgentNames)
-        {
-            state.TradeDecisions.Add(argsAgentName, null);
-            state.AnalystSignals.Add(argsAgentName, new Dictionary<string, object>());
-        }
 
         foreach (var ticker in state.Tickers)
         {
@@ -67,12 +61,12 @@ public class TradingInitializer
 
         //Logger.Info($"Initial Cash: {state.InitialCash}");
         //Logger.Info($"Margin Rate: {state.MarginRequirement}");
-        Logger.Info($"Selected Tickers: {string.Join(", ", state.Tickers)}");
-        Logger.Info($"Start Date: {state.StartDate}");
-        Logger.Info($"End Date: {state.EndDate}");
+        //Logger.Info($"Selected Tickers: {string.Join(", ", state.Tickers)}");
+        //Logger.Info($"Start Date: {state.StartDate}");
+        //Logger.Info($"End Date: {state.EndDate}");
         //Logger.Info($"Show Reasoning: {state.ShowReasoning}");
-        Logger.Info($"Model Name: {state.ModelName}");
-        Logger.Info($"Risk Level: {state.RiskLevel}");
+        //Logger.Info($"Model Name: {state.ModelName}");
+        //Logger.Info($"Risk Level: {state.RiskLevel}");
 
         return state;
     }

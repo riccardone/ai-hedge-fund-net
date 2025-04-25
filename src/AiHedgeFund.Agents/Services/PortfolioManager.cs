@@ -1,4 +1,5 @@
 ﻿using AiHedgeFund.Contracts;
+using AiHedgeFund.Contracts.Model;
 using NLog;
 
 namespace AiHedgeFund.Agents.Services;
@@ -15,19 +16,10 @@ public class PortfolioManager
 
     public void Evaluate(string agentName, TradingWorkflowState state)
     {
-        if (_agentRegistry.TryGet<TradeSignal>(agentName, out var agentFunc))
-        {
-            var result = agentFunc(state);
-            foreach (var tradeSignal in result)
-            {
-                Logger.Info(tradeSignal.ToString);
-                state.AnalystSignals?[agentName].Add(tradeSignal.Ticker, tradeSignal);
-            }
-        }
+        if (_agentRegistry.TryGet<AgentReport>(agentName, out var agentFunc))
+            agentFunc(state);
         else
-        {
             Logger.Warn("Agent not found or type mismatch");
-        }
     }
 
     public void RunRiskAssessments(string agentName, TradingWorkflowState state, RiskManagerAgent riskAgent)

@@ -17,19 +17,17 @@ public class WarrenBuffettAgent
         _valuationEngine = valuationEngine;
     }
 
-    public IEnumerable<TradeSignal> Run(TradingWorkflowState state)
+    public void Run(TradingWorkflowState state)
     {
-        var signals = new List<TradeSignal>();
-
         if (!state.Tickers.Any())
         {
             Logger.Warn("No tickers provided.");
-            return signals;
+            return;
         }
 
         foreach (var ticker in state.Tickers)
         {
-            Logger.Info("[Warren Buffett] Starting analysis for {0}", ticker);
+            Logger.Debug("[Warren Buffett] Starting analysis for {0}", ticker);
 
             if (!state.FinancialMetrics.TryGetValue(ticker, out var metrics) ||
                 !state.FinancialLineItems.TryGetValue(ticker, out var lineItems))
@@ -45,8 +43,8 @@ public class WarrenBuffettAgent
                 continue;
             }
 
-            var fundamentals = AnalyzeFundamentals(metrics); // max score: 7
-            var consistency = AnalyzeConsistency(metrics, state.RiskLevel); // max score: 3
+            var fundamentals = Fundamentals(metrics); // max score: 7
+            var consistency = Consistency(metrics, state.RiskLevel); // max score: 3
             ValuationSummary? valuationSummary = null;
             if(_valuationEngine.TryCalculateIntrinsicValue(metrics.MaxBy(m => m.ReportPeriod), state.RiskLevel, state.Prices[ticker].MinBy(p => p.Date)?.Close, out var summary))
             {
@@ -70,27 +68,20 @@ public class WarrenBuffettAgent
                 }
             }
 
-            string signal;
-            if (totalScore >= 0.7 * maxScore)
-                signal = "bullish";
-            else if (totalScore <= 0.3 * maxScore)
-                signal = "bearish";
-            else
-                signal = "neutral";
-
-            Logger.Info($"{ticker} Fundamentals {fundamentals.Score}/{fundamentals.MaxScore}: {string.Join("; ", fundamentals.Details)}");
-            Logger.Info($"{ticker} Consistency {consistency.Score}/{consistency.MaxScore}: {string.Join("; ", consistency.Details)}");
-            Logger.Info($"{ticker} Intrinsic Value: {(valuationSummary.IntrinsicValue.HasValue ? valuationSummary.IntrinsicValue.Value.ToString("C2") : "n/a")}");
-            Logger.Info($"{ticker} Margin of Safety: {(marginOfSafety.HasValue ? marginOfSafety.Value.ToString("P1") : "n/a")}");
-            //Logger.Info($"{ticker} Signal: {signal}");
-
-            if (TryGenerateOutput(ticker, fundamentals, consistency, valuationSummary, totalScore, maxScore, out var tradeSignal))
-                signals.Add(tradeSignal);
+            if (TryGenerateOutput(ticker, fundamentals, consistency, valuationSummary, totalScore, maxScore,
+                    out var tradeSignal))
+                state.AddOrUpdateAgentReport<WarrenBuffettAgent>(tradeSignal,
+                    new[]
+                    {
+                        fundamentals, consistency,
+                        valuationSummary != null && valuationSummary.IntrinsicValue.HasValue
+                            ? new FinancialAnalysisResult("IntrinsicValue", (int)valuationSummary.IntrinsicValue.Value,
+                                new List<string>(), 10)
+                            : null
+                    });
             else
                 Logger.Error($"Error while generating signal for {ticker}");
         }
-
-        return signals;
     }
 
     /// <summary>
@@ -104,11 +95,11 @@ public class WarrenBuffettAgent
     /// <param name="metrics"></param>
     /// <param name="lineItems"></param>
     /// <returns></returns>
-    private FinancialAnalysisResult AnalyzeFundamentals(IEnumerable<FinancialMetrics> metrics)
+    private FinancialAnalysisResult Fundamentals(IEnumerable<FinancialMetrics> metrics)
     {
         var latest = metrics.MaxBy(m => m.EndDate);
         if (latest == null)
-            return new FinancialAnalysisResult(0, new[] { "No recent financial metrics available." });
+            return new FinancialAnalysisResult(nameof(Fundamentals),0, new[] { "No recent financial metrics available." });
 
         var score = 0;
         var details = new List<string>();
@@ -181,7 +172,7 @@ public class WarrenBuffettAgent
             details.Add("Current ratio data not available");
         }
 
-        return new FinancialAnalysisResult(score, details, maxScore: 7);
+        return new FinancialAnalysisResult(nameof(Fundamentals), score, details, maxScore: 7);
     }
 
     /// <summary>
@@ -194,7 +185,7 @@ public class WarrenBuffettAgent
     /// <param name="lineItems"></param>
     /// <param name="riskLevel"></param>
     /// <returns></returns>
-    private FinancialAnalysisResult AnalyzeConsistency(IEnumerable<FinancialMetrics> metrics, RiskLevel riskLevel)
+    private FinancialAnalysisResult Consistency(IEnumerable<FinancialMetrics> metrics, RiskLevel riskLevel)
     {
         var ordered = metrics.OrderBy(m => m.EndDate).ToList(); // Oldest to newest
         var earnings = ordered
@@ -209,7 +200,7 @@ public class WarrenBuffettAgent
         if (earnings.Count < 4)
         {
             details.Add("Insufficient earnings data for trend analysis (need 4+ periods).");
-            return new FinancialAnalysisResult(score, details, maxScore);
+            return new FinancialAnalysisResult(nameof(Consistency), score, details, maxScore);
         }
 
         // Count growth periods
@@ -266,7 +257,7 @@ public class WarrenBuffettAgent
         if (oldest != 0)
             details.Add($"Total earnings growth of {growthRate:P1} over {earnings.Count} periods.");
 
-        return new FinancialAnalysisResult(score, details, maxScore);
+        return new FinancialAnalysisResult(nameof(Consistency), score, details, maxScore);
     }
 
     private bool TryGenerateOutput(string ticker, FinancialAnalysisResult fundamentals,
@@ -317,5 +308,32 @@ public class WarrenBuffettAgent
             agentName: "Warren Buffett",
             out tradeSignal
         );
+    }
+}
+
+public class BuffettAnalysisResult : IAgentAnalysisResult
+{
+    public BuffettAnalysisResult(string fundamentals, string consistency, string intrinsicValue, string marginOfSafety)
+    {
+        Fundamentals = fundamentals;
+        Consistency = consistency;
+        IntrinsicValue = intrinsicValue;
+        MarginOfSafety = marginOfSafety;
+    }
+
+    private string Fundamentals { get; }
+    private string Consistency { get; }
+    private string IntrinsicValue { get; }
+    private string MarginOfSafety { get; }
+
+    public List<(string Title, string Value)> ToSections()
+    {
+        return new List<(string, string)>
+        {
+            ("Fundamentals", Fundamentals),
+            ("Consistency", Consistency),
+            ("Intrinsic Value", IntrinsicValue),
+            ("Margin of Safety", MarginOfSafety)
+        };
     }
 }

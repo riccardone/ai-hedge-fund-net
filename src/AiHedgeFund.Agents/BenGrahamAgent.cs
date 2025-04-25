@@ -22,52 +22,35 @@ public class BenGrahamAgent
         _httpLib = httpLib;
     }
 
-    public IEnumerable<TradeSignal> Run(TradingWorkflowState state)
+    public void Run(TradingWorkflowState state)
     {
-        var signals = new List<TradeSignal>();
         if (!state.Tickers.Any())
         {
             Logger.Warn("No ticker provided.");
-            return signals;
+            return;
         }
         
         foreach (var ticker in state.Tickers)
         {
-            Logger.Info("[BenGraham] Starting analysis for {0}", ticker);
+            Logger.Debug("[BenGraham] Starting analysis for {0}", ticker);
 
-            var earnings = AnalyzeEarningsStability(state, ticker);
-            var strength = AnalyzeFinancialStrength(state, ticker);
-            var valuation = AnalyzeValuation(state, ticker);
+            var earnings = EarningsStability(state, ticker);
+            var strength = FinancialStrength(state, ticker);
+            var valuation = Valuation(state, ticker);
 
             var totalScore = earnings.Score + strength.Score + valuation.Score;
             var maxScore = Math.Max(1, earnings.MaxScore + strength.MaxScore + valuation.MaxScore);
 
-            string signal;
-            if (totalScore >= 0.7 * maxScore)
-                signal = "bullish";
-            else if (totalScore <= 0.3 * maxScore)
-                signal = "bearish";
-            else
-                signal = "neutral";
-
-            Logger.Info($"{ticker} Earnings Stability {earnings.Score}/{earnings.MaxScore}: {string.Join("; ", earnings.Details)}");
-            Logger.Info($"{ticker} Financial Strength {strength.Score}/{strength.MaxScore}: {string.Join("; ", strength.Details)}");
-            Logger.Info($"{ticker} Valuation  {valuation.Score}/{valuation.MaxScore}: {string.Join("; ", valuation.Details)}");
-            Logger.Info($"{ticker} Signal {signal}");
-
-            if (TryGenerateOutput(ticker, totalScore, maxScore, earnings, strength, valuation, out TradeSignal tradeSignal))
-                signals.Add(tradeSignal);
+            if (TryGenerateOutput(ticker, totalScore, maxScore, earnings, strength, valuation, out var tradeSignal))
+                state.AddOrUpdateAgentReport<BenGrahamAgent>(tradeSignal, new[] { earnings, strength, valuation });
             else
                 Logger.Error($"Error while running {nameof(BenGrahamAgent)}");
         }
-
-        return signals;
     }
 
-    private static FinancialAnalysisResult AnalyzeEarningsStability(TradingWorkflowState state, string ticker)
+    private static FinancialAnalysisResult EarningsStability(TradingWorkflowState state, string ticker)
     {
-        var result = new FinancialAnalysisResult();
-        result.SetScore(0);
+        var result = new FinancialAnalysisResult(nameof(EarningsStability), 0, new List<string>());
 
         if (!state.FinancialMetrics.TryGetValue(ticker, out var metrics))
         {
@@ -160,11 +143,10 @@ public class BenGrahamAgent
         return result;
     }
 
-    private FinancialAnalysisResult AnalyzeFinancialStrength(TradingWorkflowState state, string ticker)
+    private FinancialAnalysisResult FinancialStrength(TradingWorkflowState state, string ticker)
     {
-        var result = new FinancialAnalysisResult();
-        result.SetScore(0);
-
+        var result = new FinancialAnalysisResult(nameof(FinancialStrength), 0, new List<string>());
+        
         if (!state.FinancialLineItems.TryGetValue(ticker, out var items) || !TryGetLatestCompleteItem(items, out var latest))
         {
             result.AddDetail("No data for financial strength.");
@@ -199,10 +181,9 @@ public class BenGrahamAgent
         return result;
     }
 
-    private FinancialAnalysisResult AnalyzeValuation(TradingWorkflowState state, string ticker)
+    private FinancialAnalysisResult Valuation(TradingWorkflowState state, string ticker)
     {
-        var result = new FinancialAnalysisResult();
-        result.SetScore(0);
+        var result = new FinancialAnalysisResult(nameof(Valuation), 0, new List<string>());
 
         if (!state.FinancialLineItems.TryGetValue(ticker, out var items) ||
             !TryGetLatestCompleteItem(items, out var latest))

@@ -45,7 +45,7 @@ Return JSON exactly in this format:
 
         var json = JsonSerializer.Serialize(payload);
 
-        Logger.Info("LLM Post request started...");
+        Logger.Debug("LLM Post request started...");
 
         if (!httpLib.TryPost(endpoint, json, out var response))
         {

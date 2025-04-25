@@ -19,18 +19,17 @@ public class BillAckmanAgent
         _httpLib = httpLib;
     }
 
-    public IEnumerable<TradeSignal> Run(TradingWorkflowState state)
+    public void Run(TradingWorkflowState state)
     {
-        var signals = new List<TradeSignal>();
         if (!state.Tickers.Any())
         {
             Logger.Warn("No ticker provided.");
-            return signals;
+            return;
         }
         
         foreach (var ticker in state.Tickers)
         {
-            Logger.Info("[BillAckman] Starting analysis for {0}", ticker);
+            Logger.Debug("[BillAckman] Starting analysis for {0}", ticker);
 
             if (!state.FinancialMetrics.TryGetValue(ticker, out var metrics)
                 || !state.FinancialLineItems.TryGetValue(ticker, out var lineItems))
@@ -46,45 +45,31 @@ public class BillAckmanAgent
                 continue;
             }
 
-            var businessQuality = AnalyzeBusinessQuality(metrics, lineItems);
-            var financialDiscipline = AnalyzeFinancialDiscipline(metrics, lineItems);
-            var valuation = AnalyzeValuation(metrics, marketCap);
+            var businessQuality = BusinessQuality(metrics, lineItems);
+            var financialDiscipline = FinancialDiscipline(metrics, lineItems);
+            var valuation = Valuation(metrics, marketCap);
 
             var totalScore = businessQuality.Score + financialDiscipline.Score + valuation.Score;
             var maxScore = Math.Max(1, businessQuality.MaxScore + financialDiscipline.MaxScore + valuation.MaxScore);
 
-            string signal;
-            if (totalScore >= 0.7 * maxScore)
-                signal = "bullish";
-            else if (totalScore <= 0.3 * maxScore)
-                signal = "bearish";
-            else
-                signal = "neutral";
-
-            Logger.Info($"{ticker} Business Quality {businessQuality.Score}/{businessQuality.MaxScore}: {string.Join("; ", businessQuality.Details)})");
-            Logger.Info($"{ticker} Financial Discipline {financialDiscipline.Score}/{financialDiscipline.MaxScore}: {string.Join("; ", financialDiscipline.Details)}");
-            Logger.Info($"{ticker} Valuation {valuation.Score}/{valuation.MaxScore}: {string.Join("; ", valuation.Details)}");
-            Logger.Info($"{ticker} Signal {signal}");
-
-            if (TryGenerateOutput(ticker, businessQuality, financialDiscipline, valuation, totalScore, maxScore, out TradeSignal tradeSignal))
-                signals.Add(tradeSignal);
+            if (TryGenerateOutput(ticker, businessQuality, financialDiscipline, valuation, totalScore, maxScore,
+                    out var tradeSignal))
+                state.AddOrUpdateAgentReport<BillAckmanAgent>(tradeSignal,
+                    new[] { businessQuality, financialDiscipline, valuation });
             else
                 Logger.Error($"Error while running {nameof(BillAckmanAgent)}");
         }
-
-        return signals;
     }
 
-    private static FinancialAnalysisResult AnalyzeBusinessQuality(IEnumerable<FinancialMetrics> metrics, IEnumerable<FinancialLineItem> lineItems)
+    private static FinancialAnalysisResult BusinessQuality(IEnumerable<FinancialMetrics> metrics, IEnumerable<FinancialLineItem> lineItems)
     {
-        var result = new FinancialAnalysisResult();
+        var result = new FinancialAnalysisResult(nameof(BusinessQuality), 0, new List<string>(), 7);
         const int maxScore = 7;
 
         if (!metrics.Any() || !lineItems.Any())
         {
             result.AddDetail("Insufficient data to analyze business quality");
-            result.SetScore(0);
-            return new FinancialAnalysisResult(0, result.Details, maxScore);
+            return result;
         }
 
         var ordered = metrics.OrderBy(m => m.EndDate).ToList();
@@ -181,18 +166,18 @@ public class BillAckmanAgent
             result.AddDetail("No ROE data available.");
         }
 
-        return new FinancialAnalysisResult(result.Score, result.Details, maxScore);
+        return new FinancialAnalysisResult(nameof(BusinessQuality), result.Score, result.Details, maxScore);
     }
 
-    private static FinancialAnalysisResult AnalyzeFinancialDiscipline(IEnumerable<FinancialMetrics> metrics, IEnumerable<FinancialLineItem> lineItems)
+    private static FinancialAnalysisResult FinancialDiscipline(IEnumerable<FinancialMetrics> metrics, IEnumerable<FinancialLineItem> lineItems)
     {
-        var result = new FinancialAnalysisResult();
         const int maxScore = 4;
+        var result = new FinancialAnalysisResult(nameof(FinancialDiscipline), 0, new List<string>(), maxScore);
 
         if (!metrics.Any() || !lineItems.Any())
         {
             result.AddDetail("Insufficient data to analyze financial discipline");
-            return new FinancialAnalysisResult(0, result.Details, maxScore);
+            return new FinancialAnalysisResult(nameof(FinancialDiscipline), 0, result.Details, maxScore);
         }
 
         var orderedMetrics = metrics.OrderBy(m => m.EndDate).ToList();
@@ -298,31 +283,25 @@ public class BillAckmanAgent
             result.AddDetail("No multi-period share count data.");
         }
 
-        return new FinancialAnalysisResult(result.Score, result.Details, maxScore);
+        return result;
     }
 
-    private class AnalysisResult
+    private static FinancialAnalysisResult Valuation(IEnumerable<FinancialMetrics> metrics, decimal? marketCap)
     {
-        public decimal Score { get; set; }
-        public string Details { get; set; } = string.Empty;
-    }
-
-    private static FinancialAnalysisResult AnalyzeValuation(IEnumerable<FinancialMetrics> metrics, decimal? marketCap)
-    {
-        var result = new FinancialAnalysisResult();
         const int maxScore = 3;
+        var result = new FinancialAnalysisResult(nameof(Valuation), 0, new List<string>(), maxScore);
 
         if (!metrics.Any() || marketCap == null || marketCap <= 0)
         {
             result.AddDetail("Insufficient data to perform valuation");
-            return new FinancialAnalysisResult(0, result.Details, maxScore);
+            return result;
         }
 
         var fcf = metrics.Where(v => v.OperatingCashFlow.HasValue).Select(li => li.OperatingCashFlow).ToList();
         if (fcf.Count == 0 || fcf[^1] <= 0)
         {
-            return new FinancialAnalysisResult(0,
-                new[] { $"No positive FCF for valuation; FCF = {fcf.LastOrDefault():N2}" }, maxScore);
+            result.AddDetail($"No positive FCF for valuation; FCF = {fcf.LastOrDefault():N2}");
+            return result;
         }
 
         var baseFcf = fcf[^1].Value;
@@ -362,7 +341,7 @@ public class BillAckmanAgent
         result.AddDetail($"Terminal Value: {terminalValue:N0}");
         result.AddDetail($"Intrinsic Value: {intrinsicValue:N0}");
 
-        return new FinancialAnalysisResult(result.Score, result.Details, maxScore);
+        return result;
     }
 
     private bool TryGenerateOutput(string ticker, FinancialAnalysisResult businessQuality,

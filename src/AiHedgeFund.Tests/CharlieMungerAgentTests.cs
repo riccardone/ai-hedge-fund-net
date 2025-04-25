@@ -53,7 +53,6 @@ namespace AiHedgeFund.Tests
             _state = new TradingWorkflowState
             {
                 FinancialMetrics = new Dictionary<string, IEnumerable<FinancialMetrics>> { { "AAPL", metrics } },
-                AnalystSignals = new Dictionary<string, IDictionary<string, object>>(),
                 Portfolio = new Portfolio(),
                 Tickers = new List<string> { "AAPL" },
                 FinancialLineItems = new Dictionary<string, IEnumerable<FinancialLineItem>> { { "AAPL", _lineItems } },
@@ -69,10 +68,10 @@ namespace AiHedgeFund.Tests
             var sut = new CharlieMungerAgent(new FakeHttpLib());
 
             // Act
-            var signals = sut.Run(_state);
+           sut.Run(_state);
 
             // Assert
-            Assert.That(signals.First().Confidence.Equals(85M));
+            Assert.That(_state.AnalystSignals.First().Value.Values.First().Confidence.Equals(85M));
         }
     }
 }

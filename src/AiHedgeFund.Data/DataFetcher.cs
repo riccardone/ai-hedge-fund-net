@@ -62,6 +62,9 @@ public class DataFetcher
                 PropertyNameCaseInsensitive = true
             };
 
+            if (jsonString.Contains("detected your API key"))
+                throw new ArgumentException($"Error message from the financial data provider: {jsonString}");
+
             result = JsonSerializer.Deserialize<T>(jsonString, options);
             if (result != null) return true;
             Logger.Warn("Deserialization returned null endpoint '{0}'", endpoint);

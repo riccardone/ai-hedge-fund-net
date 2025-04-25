@@ -6,20 +6,20 @@ public class AgentRegistry : IAgentRegistry
 {
     private readonly Dictionary<string, Delegate> _agents = new();
 
-    public void Register<T>(string name, Func<TradingWorkflowState, IEnumerable<T>> func)
+    public void Register(string name, Action<TradingWorkflowState> action)
     {
-        _agents[name] = func;
+        _agents[name] = action;
     }
 
-    public bool TryGet<T>(string name, out Func<TradingWorkflowState, IEnumerable<T>>? agentFunc)
+    public bool TryGet<T>(string name, out Action<TradingWorkflowState>? agentAction)
     {
-        if (_agents.TryGetValue(name, out var del) && del is Func<TradingWorkflowState, IEnumerable<T>> typed)
+        if (_agents.TryGetValue(name, out var del) && del is Action<TradingWorkflowState> typed)
         {
-            agentFunc = typed;
+            agentAction = typed;
             return true;
         }
 
-        agentFunc = null;
+        agentAction = null;
         return false;
     }
 

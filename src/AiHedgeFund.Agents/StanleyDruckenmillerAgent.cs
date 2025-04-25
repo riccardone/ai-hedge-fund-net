@@ -15,19 +15,17 @@ public class StanleyDruckenmillerAgent
         _httpLib = httpLib;
     }
 
-    public IEnumerable<TradeSignal> Run(TradingWorkflowState state)
+    public void Run(TradingWorkflowState state)
     {
-        var signals = new List<TradeSignal>();
-
         if (!state.Tickers.Any())
         {
             Logger.Warn("No ticker provided.");
-            return signals;
+            return;
         }
 
         foreach (var ticker in state.Tickers)
         {
-            Logger.Info("[StanleyDruckenmiller] Starting analysis for {0}", ticker);
+            Logger.Debug("[StanleyDruckenmiller] Starting analysis for {0}", ticker);
 
             if (!state.FinancialMetrics.TryGetValue(ticker, out var metrics) ||
                 !state.FinancialLineItems.TryGetValue(ticker, out var lineItems))
@@ -43,9 +41,9 @@ public class StanleyDruckenmillerAgent
                 continue;
             }
 
-            var growthMomentum = AnalyzeGrowthAndMomentum(metrics, lineItems, state.Prices[ticker]);
-            var riskReward = AnalyzeRiskReward(metrics, lineItems, state.Prices[ticker]);
-            var sentiment = AnalyzeSentiment(state.CompanyNews[ticker]);
+            var growthMomentum = GrowthAndMomentum(metrics, lineItems, state.Prices[ticker]);
+            var riskReward = RiskReward(metrics, lineItems, state.Prices[ticker]);
+            var sentiment = Sentiment(state.CompanyNews[ticker]);
             var insiderActivity = AnalyzeInsiderActivity(metrics);
             var valuation = AnalyzeValuation(metrics, lineItems, marketCap);
 
@@ -59,28 +57,11 @@ public class StanleyDruckenmillerAgent
 
             const int maxScore = 10;
 
-            string signal;
-            if (totalScore >= 0.7 * maxScore)
-                signal = "bullish";
-            else if (totalScore <= 0.3 * maxScore)
-                signal = "bearish";
-            else
-                signal = "neutral";
-
-            Logger.Info($"{ticker} Growth and Momentum {growthMomentum.Score}/{growthMomentum.MaxScore}: {string.Join("; ", growthMomentum.Details)}");
-            Logger.Info($"{ticker} Risk Reward {riskReward.Score}/{riskReward.MaxScore}: {string.Join("; ", riskReward.Details)}");
-            Logger.Info($"{ticker} Sentiment {sentiment.Score}/{sentiment.MaxScore}: {string.Join("; ", sentiment.Details)}");
-            Logger.Info($"{ticker} Insider Activity {insiderActivity.Score}/{insiderActivity.MaxScore}: {string.Join("; ", insiderActivity.Details)}");
-            Logger.Info($"{ticker} Valuation {valuation.Score}/{valuation.MaxScore}: {string.Join("; ", valuation.Details)}");
-            Logger.Info($"{ticker} Signal {signal}");
-
             if (TryGenerateOutput(ticker, growthMomentum, riskReward, valuation, sentiment, insiderActivity, totalScore, maxScore, out var tradeSignal))
-                signals.Add(tradeSignal);
+                state.AddOrUpdateAgentReport<StanleyDruckenmillerAgent>(tradeSignal, new []{ growthMomentum, riskReward, sentiment, insiderActivity, valuation });
             else
                 Logger.Error($"Error while running {nameof(StanleyDruckenmillerAgent)} for {ticker}");
         }
-
-        return signals;
     }
 
     /// <summary>
@@ -93,7 +74,7 @@ public class StanleyDruckenmillerAgent
     /// <param name="lineItems"></param>
     /// <param name="prices"></param>
     /// <returns></returns>
-    private FinancialAnalysisResult AnalyzeGrowthAndMomentum(IEnumerable<FinancialMetrics> metrics, IEnumerable<FinancialLineItem> lineItems, IEnumerable<Price> prices)
+    private FinancialAnalysisResult GrowthAndMomentum(IEnumerable<FinancialMetrics> metrics, IEnumerable<FinancialLineItem> lineItems, IEnumerable<Price> prices)
     {
         var details = new List<string>();
         double rawScore = 0;
@@ -158,7 +139,7 @@ public class StanleyDruckenmillerAgent
         }
 
         var finalScore = (int)Math.Min(10, (rawScore / 9.0) * 10);
-        return new FinancialAnalysisResult(finalScore, details);
+        return new FinancialAnalysisResult(nameof(GrowthAndMomentum), finalScore, details);
     }
 
     /// <summary>
@@ -171,7 +152,7 @@ public class StanleyDruckenmillerAgent
     /// <param name="lineItems"></param>
     /// <param name="prices"></param>
     /// <returns></returns>
-    private FinancialAnalysisResult AnalyzeRiskReward(IEnumerable<FinancialMetrics> metrics, IEnumerable<FinancialLineItem> lineItems, IEnumerable<Price> prices)
+    private FinancialAnalysisResult RiskReward(IEnumerable<FinancialMetrics> metrics, IEnumerable<FinancialLineItem> lineItems, IEnumerable<Price> prices)
     {
         var details = new List<string>();
         double rawScore = 0;
@@ -179,7 +160,7 @@ public class StanleyDruckenmillerAgent
         if (lineItems == null || !lineItems.Any() || prices == null || !prices.Any())
         {
             details.Add("Insufficient data for risk-reward analysis");
-            return new FinancialAnalysisResult(0, details);
+            return new FinancialAnalysisResult("RiskReward", 0, details);
 
         }
 
@@ -245,7 +226,7 @@ public class StanleyDruckenmillerAgent
         }
 
         int finalScore = Convert.ToInt32(Math.Min(10, (rawScore / 6.0) * 10));
-        return new FinancialAnalysisResult(finalScore, details);
+        return new FinancialAnalysisResult(nameof(RiskReward), finalScore, details);
     }
 
     /// <summary>
@@ -253,11 +234,11 @@ public class StanleyDruckenmillerAgent
     /// </summary>
     /// <param name="news"></param>
     /// <returns></returns>
-    private FinancialAnalysisResult AnalyzeSentiment(IEnumerable<NewsSentiment> news)
+    private FinancialAnalysisResult Sentiment(IEnumerable<NewsSentiment> news)
     {
         var newsList = news?.ToList() ?? new List<NewsSentiment>();
         if (!newsList.Any())
-            return new FinancialAnalysisResult(5, new[] { "No news data; defaulting to neutral sentiment" });
+            return new FinancialAnalysisResult(nameof(Sentiment),5, new[] { "No news data; defaulting to neutral sentiment" });
 
         var negativeKeywords = new[]
         {
@@ -291,7 +272,7 @@ public class StanleyDruckenmillerAgent
             details.Add("Mostly positive/neutral headlines");
         }
 
-        return new FinancialAnalysisResult(score, details);
+        return new FinancialAnalysisResult(nameof(Sentiment), score, details);
     }
 
     /// <summary>
@@ -314,7 +295,7 @@ public class StanleyDruckenmillerAgent
         if (!insiderTrades.Any())
         {
             details.Add("No insider trades data; defaulting to neutral");
-            return new FinancialAnalysisResult(score, details);
+            return new FinancialAnalysisResult("InsiderActivity", score, details);
         }
 
         int buys = 0, sells = 0;
@@ -330,7 +311,7 @@ public class StanleyDruckenmillerAgent
         if (total == 0)
         {
             details.Add("No buy/sell transactions found; neutral");
-            return new FinancialAnalysisResult(score, details);
+            return new FinancialAnalysisResult("InsiderActivity", score, details);
         }
 
         var buyRatio = (double)buys / total;
@@ -350,7 +331,7 @@ public class StanleyDruckenmillerAgent
             details.Add($"Mostly insider selling: {buys} buys vs. {sells} sells");
         }
 
-        return new FinancialAnalysisResult(score, details);
+        return new FinancialAnalysisResult("InsiderActivity", score, details);
     }
 
     /// <summary>
@@ -373,7 +354,7 @@ public class StanleyDruckenmillerAgent
         if (!items.Any() || !metrics.Any() || marketCap is null)
         {
             details.Add("Insufficient data for valuation analysis");
-            return new FinancialAnalysisResult(5, details); // neutral
+            return new FinancialAnalysisResult("Valuation",5, details); // neutral
         }
 
         var netIncomes = metrics.Where(x => x.NetIncome.HasValue).Select(x => x.NetIncome.Value).ToList();
@@ -494,7 +475,7 @@ public class StanleyDruckenmillerAgent
         }
 
         var finalScore = Math.Min(10, rawScore * 10.0 / 8.0);
-        return new FinancialAnalysisResult((int)Math.Round(finalScore), details);
+        return new FinancialAnalysisResult("Valuation", (int)Math.Round(finalScore), details);
     }
 
 

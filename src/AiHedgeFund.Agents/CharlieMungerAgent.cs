@@ -19,18 +19,17 @@ public class CharlieMungerAgent
         _httpLib = chatter;
     }
 
-    public IEnumerable<TradeSignal> Run(TradingWorkflowState state)
+    public void Run(TradingWorkflowState state)
     {
-        var signals = new List<TradeSignal>();
         if (!state.Tickers.Any())
         {
             Logger.Warn("No ticker provided.");
-            return signals;
+            return;
         }
-        
+
         foreach (var ticker in state.Tickers)
         {
-            Logger.Info("[CharlieMunger] Starting analysis for {0}", ticker);
+            Logger.Debug("[CharlieMunger] Starting analysis for {0}", ticker);
 
             if (!state.FinancialMetrics.TryGetValue(ticker, out var metrics)
                 || !state.FinancialLineItems.TryGetValue(ticker, out var lineItems))
@@ -46,42 +45,25 @@ public class CharlieMungerAgent
                 continue;
             }
 
-            var moatStrength = AnalyzeMoatStrength(metrics, lineItems);
-            var managementQuality = AnalyzeManagementQuality(metrics, lineItems);
-            var predictability = AnalyzePredictability(metrics, lineItems);
-            var companyNews = new FinancialAnalysisResult(5, new []{"no news available"});
+            var moatStrength = MoatStrength(metrics, lineItems);
+            var managementQuality = ManagementQuality(metrics, lineItems);
+            var predictability = Predictability(metrics, lineItems);
+            var companyNews = new FinancialAnalysisResult("CompanyNews",5, new[] { "no news available" });
             if (state.CompanyNews.TryGetValue(ticker, out var newsList) && newsList != null && newsList.Any())
-                companyNews = AnalyzeCompanyNews(newsList.ToList());
-            var valuation = AnalyzeValuation(metrics, marketCap);
-            var totalScore = moatStrength.Score + managementQuality.Score + companyNews.Score + predictability.Score + valuation.Score;
-            var maxScore = Math.Max(1, moatStrength.MaxScore + managementQuality.MaxScore + companyNews.MaxScore + predictability.MaxScore + valuation.MaxScore);
+                companyNews = CompanyNews(newsList.ToList());
+            var valuation = Valuation(metrics, marketCap);
+            var totalScore = moatStrength.Score + managementQuality.Score + companyNews.Score + predictability.Score +
+                             valuation.Score;
+            var maxScore = Math.Max(1,
+                moatStrength.MaxScore + managementQuality.MaxScore + companyNews.MaxScore + predictability.MaxScore +
+                valuation.MaxScore);
 
-            string signal;
-            if (totalScore >= 0.7 * maxScore)
-                signal = "bullish";
-            else if (totalScore <= 0.3 * maxScore)
-                signal = "bearish";
+            if (TryGenerateOutput(state, ticker, moatStrength, managementQuality, predictability, companyNews,
+                    valuation, totalScore, maxScore, out var tradeSignal))
+                state.AddOrUpdateAgentReport<CharlieMungerAgent>(tradeSignal, new []{moatStrength, managementQuality, predictability, companyNews, valuation});
             else
-                signal = "neutral";
-
-            Logger.Info($"{ticker} Moat Strength {moatStrength.Score}/{moatStrength.MaxScore}: {string.Join("; ", moatStrength.Details)}");
-            Logger.Info($"{ticker} Management Quality {managementQuality.Score}/{managementQuality.MaxScore}: {string.Join("; ", managementQuality.Details)}");
-            Logger.Info($"{ticker} Predictability {predictability.Score}/{predictability.MaxScore}: {string.Join("; ", predictability.Details)}");
-            Logger.Info($"{ticker} Company News {companyNews.Score}/{companyNews.MaxScore}: {string.Join("; ", companyNews.Details)}");
-            Logger.Info($"{ticker} Valuation {valuation.Score}/{valuation.MaxScore}: {string.Join("; ", valuation.Details)}");
-            Logger.Info($"{ticker} Signal {signal}");
-
-            if (TryGenerateOutput(state, ticker, moatStrength, managementQuality, predictability, companyNews, valuation, totalScore, maxScore, out var tradeSignal))
-                signals.Add(tradeSignal);
-            else
-            {
                 Logger.Error($"Error while running {nameof(CharlieMungerAgent)}");
-                return new List<TradeSignal> { tradeSignal };
-            }
-                
         }
-
-        return signals;
     }
 
     /// <summary>
@@ -92,9 +74,9 @@ public class CharlieMungerAgent
     /// <param name="lineItems"></param>
     /// <returns></returns>
     /// <exception cref="NotImplementedException"></exception>
-    private FinancialAnalysisResult AnalyzePredictability(IEnumerable<FinancialMetrics> metrics, IEnumerable<FinancialLineItem> lineItems)
+    private FinancialAnalysisResult Predictability(IEnumerable<FinancialMetrics> metrics, IEnumerable<FinancialLineItem> lineItems)
     {
-        var result = new FinancialAnalysisResult();
+        var result = new FinancialAnalysisResult(nameof(Predictability), 0, new List<string>());
 
         if (metrics == null || !metrics.Any())
         {
@@ -342,11 +324,11 @@ public class CharlieMungerAgent
     /// <param name="lineItems"></param>
     /// <returns></returns>
     /// <exception cref="NotImplementedException"></exception>
-    private FinancialAnalysisResult AnalyzeManagementQuality(IEnumerable<FinancialMetrics> metrics, IEnumerable<FinancialLineItem> lineItems)
+    private FinancialAnalysisResult ManagementQuality(IEnumerable<FinancialMetrics> metrics, IEnumerable<FinancialLineItem> lineItems)
     {
-        var result = new FinancialAnalysisResult(0, new List<string>(), 12);
+        var result = new FinancialAnalysisResult(nameof(ManagementQuality),0, new List<string>(), 10);
         var items = lineItems?.ToList() ?? new List<FinancialLineItem>();
-        //var trades = insiderTrades?.ToList() ?? new List<InsiderTrade>();
+        
         int score = 0;
 
         if (items.Count == 0)
@@ -371,11 +353,7 @@ public class CharlieMungerAgent
         // 1. Capital Allocation - FCF/Net Income Ratio
         var fcfs = ordered.Where(x => x.FreeCashFlow > 0).Select(x => x.FreeCashFlow).ToList();
         var netIncomes = ordered.Where(x => x.NetIncome.HasValue).Select(x => x.NetIncome).ToList();
-
-        //var netIncomes = items.Where(x => x.Extras.TryGetValue("NetIncome", out var n) && n is decimal)
-        //                      .Select(x => (decimal)x.Extras["NetIncome"])
-        //                      .ToList();
-
+        
         if (fcfs.Count > 0 && fcfs.Count == netIncomes.Count)
         {
             var ratios = new List<decimal>();
@@ -580,7 +558,7 @@ public class CharlieMungerAgent
     /// <param name="lineItems"></param>
     /// <returns></returns>
     /// <exception cref="NotImplementedException"></exception>
-    private FinancialAnalysisResult AnalyzeMoatStrength(IEnumerable<FinancialMetrics> metrics, IEnumerable<FinancialLineItem> lineItems)
+    private FinancialAnalysisResult MoatStrength(IEnumerable<FinancialMetrics> metrics, IEnumerable<FinancialLineItem> lineItems)
     {
         var maxScore = 10;
         var score = 0;
@@ -588,7 +566,7 @@ public class CharlieMungerAgent
 
         if (!metrics.Any() || !lineItems.Any())
         {
-            return new FinancialAnalysisResult(0, new[] { "Insufficient data to analyze moat strength" }, maxScore);
+            return new FinancialAnalysisResult(nameof(MoatStrength), 0, new[] { "Insufficient data to analyze moat strength" }, maxScore);
         }
 
         var ordered = metrics.OrderBy(m => m.EndDate).ToList();
@@ -712,12 +690,12 @@ public class CharlieMungerAgent
 
         var finalScore = Math.Min(maxScore, score * maxScore / 9);
 
-        return new FinancialAnalysisResult(finalScore, details, maxScore);
+        return new FinancialAnalysisResult(nameof(MoatStrength), finalScore, details, maxScore);
     }
 
-    private static FinancialAnalysisResult AnalyzeValuation(IEnumerable<FinancialMetrics> metrics, decimal? marketCap)
+    private static FinancialAnalysisResult Valuation(IEnumerable<FinancialMetrics> metrics, decimal? marketCap)
     {
-        var result = new FinancialAnalysisResult();
+        var result = new FinancialAnalysisResult(nameof(Valuation), 0, new List<string>());
 
         if (metrics == null || !metrics.Any() || marketCap is null)
         {
@@ -833,9 +811,9 @@ public class CharlieMungerAgent
     /// </summary>
     /// <param name="newsSentiments"></param>
     /// <returns></returns>
-    private FinancialAnalysisResult AnalyzeCompanyNews(IList<NewsSentiment> newsSentiments)
+    private FinancialAnalysisResult CompanyNews(IList<NewsSentiment> newsSentiments)
     {
-        var result = new FinancialAnalysisResult();
+        var result = new FinancialAnalysisResult(nameof(CompanyNews), 0, new List<string>());
 
         if (newsSentiments == null || newsSentiments.Count == 0)
         {
