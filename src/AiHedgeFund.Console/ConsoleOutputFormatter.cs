@@ -10,7 +10,12 @@ public static class ConsoleOutputFormatter
     {
         string Colorize(string text, string color)
         {
-            return $"[{color}]{text}[/]";
+            return $"[{color}]{EscapeMarkup(text)}[/]";
+        }
+
+        string EscapeMarkup(string text)
+        {
+            return text.Replace("[", "[[").Replace("]", "]]");
         }
 
         var displayName = agentKey.ToDisplayName();
@@ -24,7 +29,7 @@ public static class ConsoleOutputFormatter
         foreach (var report in reports)
         {
             AnsiConsole.WriteLine(); // blank line
-            AnsiConsole.MarkupLine($"[Ticker: {Colorize(report.TradeSignal.Ticker, "green")}]");
+            AnsiConsole.MarkupLine($"[[Ticker: {Colorize(report.TradeSignal.Ticker, "green")}]]");
             AnsiConsole.MarkupLine($"{Colorize("------------------------------------------------------------------", "gray")}");
             AnsiConsole.MarkupLine($"Signal    : {Colorize(report.TradeSignal.Signal, "white")} (Confidence: {report.TradeSignal.Confidence})");
             AnsiConsole.MarkupLine($"Reasoning : {Colorize(report.TradeSignal.Reasoning, "white")}");

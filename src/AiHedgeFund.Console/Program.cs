@@ -28,6 +28,7 @@ internal class Program
                 services.AddSingleton<IValuationEngine, DefaultValuationEngine>();
                 services.AddSingleton<IHttpLib, OpenAiHttp>();
                 services.AddSingleton<TradingInitializer>();
+                services.AddSingleton<DataFetcher>();
                 services.AddSingleton<IAgentRegistry, AgentRegistry>();
                 services.AddSingleton<BenGrahamAgent>();
                 services.AddSingleton<CathieWoodAgent>();
