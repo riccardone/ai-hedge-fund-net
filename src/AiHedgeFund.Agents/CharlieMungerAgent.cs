@@ -1,7 +1,7 @@
 ﻿using AiHedgeFund.Contracts;
 using AiHedgeFund.Contracts.Model;
-using NLog;
 using AiHedgeFund.Agents.Services;
+using Microsoft.Extensions.Logging;
 
 namespace AiHedgeFund.Agents;
 
@@ -11,37 +11,38 @@ namespace AiHedgeFund.Agents;
 /// </summary>
 public class CharlieMungerAgent
 {
-    private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+    private readonly ILogger<CharlieMungerAgent> _logger;
     private readonly IHttpLib _httpLib;
 
-    public CharlieMungerAgent(IHttpLib chatter)
+    public CharlieMungerAgent(IHttpLib chatter, ILogger<CharlieMungerAgent> logger)
     {
         _httpLib = chatter;
+        _logger = logger;
     }
 
     public void Run(TradingWorkflowState state)
     {
         if (!state.Tickers.Any())
         {
-            Logger.Warn("No ticker provided.");
+            _logger.LogWarning("No ticker provided.");
             return;
         }
 
         foreach (var ticker in state.Tickers)
         {
-            Logger.Debug("[CharlieMunger] Starting analysis for {0}", ticker);
+            _logger.LogDebug("[CharlieMunger] Starting analysis for {0}", ticker);
 
             if (!state.FinancialMetrics.TryGetValue(ticker, out var metrics)
                 || !state.FinancialLineItems.TryGetValue(ticker, out var lineItems))
             {
-                Logger.Warn($"Missing data for {ticker}");
+                _logger.LogWarning($"Missing data for {ticker}");
                 continue;
             }
 
             var marketCap = metrics.OrderByDescending(m => m.EndDate).FirstOrDefault()?.MarketCap;
             if (marketCap == null)
             {
-                Logger.Warn($"No market cap for {ticker}");
+                _logger.LogWarning($"No market cap for {ticker}");
                 continue;
             }
 
@@ -62,7 +63,7 @@ public class CharlieMungerAgent
                     valuation, totalScore, maxScore, out var tradeSignal))
                 state.AddOrUpdateAgentReport<CharlieMungerAgent>(tradeSignal, new []{moatStrength, managementQuality, predictability, companyNews, valuation});
             else
-                Logger.Error($"Error while running {nameof(CharlieMungerAgent)}");
+                _logger.LogError($"Error while running {nameof(CharlieMungerAgent)}");
         }
     }
 

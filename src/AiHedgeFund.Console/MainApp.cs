@@ -1,13 +1,11 @@
 ﻿using AiHedgeFund.Agents;
 using AiHedgeFund.Agents.Services;
 using Microsoft.Extensions.Hosting;
-using NLog;
 
 namespace AiHedgeFund.Console;
 
 public class MainApp : IHostedService
 {
-    private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
     private readonly TradingInitializer _initializer;
     private readonly PortfolioManager _portfolio;
     private readonly RiskManagerAgent _riskAgent;
@@ -24,14 +22,22 @@ public class MainApp : IHostedService
         var state = await _initializer.InitializeAsync();
 
         foreach (var agent in state.SelectedAnalysts)
+        {
             _portfolio.Evaluate(agent, state);
+        }
 
         _portfolio.RunRiskAssessments("risk_management_agent", state, _riskAgent);
 
         foreach (var kvp in state.AnalystSignals)
         {
-            var formattedOutput = ConsoleOutputFormatter.FormatAgentReport(kvp.Key, state.ModelName, state.RiskLevel.ToString(), state.StartDate, state.EndDate, kvp.Value.Values.ToList());
-            Logger.Info(formattedOutput);
+            ConsoleOutputFormatter.PrintAgentReport(
+                kvp.Key,
+                state.ModelName,
+                state.RiskLevel.ToString(),
+                state.StartDate,
+                state.EndDate,
+                kvp.Value.Values.ToList()
+            );
         }
 
         Environment.Exit(0);

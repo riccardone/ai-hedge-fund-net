@@ -1,18 +1,19 @@
 ﻿using System.Collections.Concurrent;
 using System.Text.Json;
-using NLog;
+using Microsoft.Extensions.Logging;
 
 namespace AiHedgeFund.Data;
 
 public class DataFetcher 
 {
-    private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+    private readonly ILogger<DataFetcher> _logger;
     private readonly FileDataManager _dataManager;
     private readonly ConcurrentDictionary<string, object?> _memoryCache = new();
     private readonly HttpClient _client;
 
-    public DataFetcher(IHttpClientFactory httpClientFactory)
+    public DataFetcher(IHttpClientFactory httpClientFactory, ILogger<DataFetcher> logger)
     {
+        _logger = logger;
         _dataManager = new FileDataManager();
         _client = httpClientFactory.CreateClient("AlphaVantage");
     }
@@ -50,7 +51,7 @@ public class DataFetcher
             var response = _client.GetAsync(endpoint).GetAwaiter().GetResult();
             if (!response.IsSuccessStatusCode)
             {
-                Logger.Warn("API call to '{0}' failed with status code {1}", endpoint, response.StatusCode);
+                _logger.LogWarning("API call to '{0}' failed with status code {1}", endpoint, response.StatusCode);
                 result = default;
                 return false;
             }
@@ -67,20 +68,20 @@ public class DataFetcher
 
             result = JsonSerializer.Deserialize<T>(jsonString, options);
             if (result != null) return true;
-            Logger.Warn("Deserialization returned null endpoint '{0}'", endpoint);
+            _logger.LogWarning("Deserialization returned null endpoint '{0}'", endpoint);
             return false;
         }
         catch (HttpRequestException ex)
         {
-            Logger.Error(ex, $"HTTP request failed {ex.GetBaseException().Message} '{endpoint}'");
+            _logger.LogError(ex, $"HTTP request failed {ex.GetBaseException().Message} '{endpoint}'");
         }
         catch (JsonException ex)
         {
-            Logger.Error(ex, $"JSON deserialization failed {ex.GetBaseException().Message} '{endpoint}'");
+            _logger.LogError(ex, $"JSON deserialization failed {ex.GetBaseException().Message} '{endpoint}'");
         }
         catch (Exception ex)
         {
-            Logger.Error(ex, $"{ex.GetBaseException().Message} '{endpoint}'");
+            _logger.LogError(ex, $"{ex.GetBaseException().Message} '{endpoint}'");
         }
 
         result = default;

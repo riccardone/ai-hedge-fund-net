@@ -1,16 +1,17 @@
 ﻿using System.Text;
 using AiHedgeFund.Contracts;
-using NLog;
+using Microsoft.Extensions.Logging;
 
 namespace AiHedgeFund.Data;
 
 public class OpenAiHttp : IHttpLib
 {
-    private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+    private readonly ILogger<OpenAiHttp> _logger;
     private readonly HttpClient _client;
 
-    public OpenAiHttp(IHttpClientFactory clientFactory)
+    public OpenAiHttp(IHttpClientFactory clientFactory, ILogger<OpenAiHttp> logger)
     {
+        _logger = logger;
         _client = clientFactory.CreateClient("OpenAI");
     }
 
@@ -22,7 +23,7 @@ public class OpenAiHttp : IHttpLib
 
         if (responseMessage.IsSuccessStatusCode)
             return true;
-        Logger.Error($"Request failed for {path}: {responseMessage.StatusCode} - {response} ");
+        _logger.LogError($"Request failed for {path}: {responseMessage.StatusCode} - {response} ");
         return false;
     }
 }

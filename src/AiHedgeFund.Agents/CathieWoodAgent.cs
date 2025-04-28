@@ -1,7 +1,7 @@
 ﻿using AiHedgeFund.Contracts;
 using AiHedgeFund.Contracts.Model;
-using NLog;
 using AiHedgeFund.Agents.Services;
+using Microsoft.Extensions.Logging;
 
 namespace AiHedgeFund.Agents;
 
@@ -14,37 +14,38 @@ namespace AiHedgeFund.Agents;
 /// </summary>
 public class CathieWoodAgent
 {
-    private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+    private readonly ILogger<CathieWoodAgent> _logger;
     private readonly IHttpLib _httpLib;
 
-    public CathieWoodAgent(IHttpLib chatter)
+    public CathieWoodAgent(IHttpLib chatter, ILogger<CathieWoodAgent> logger)
     {
         _httpLib = chatter;
+        _logger = logger;
     }
 
     public void Run(TradingWorkflowState state)
     {
         if (!state.Tickers.Any())
         {
-            Logger.Warn("No ticker provided.");
+            _logger.LogWarning("No ticker provided.");
             return;
         }
 
         foreach (var ticker in state.Tickers)
         {
-            Logger.Debug($"[CathieWood] Starting analysis for {ticker}");
+            _logger.LogDebug($"[CathieWood] Starting analysis for {ticker}");
 
             if (!state.FinancialMetrics.TryGetValue(ticker, out var metrics)
                 || !state.FinancialLineItems.TryGetValue(ticker, out var lineItems))
             {
-                Logger.Warn($"Missing data for {ticker}");
+                _logger.LogWarning($"Missing data for {ticker}");
                 continue;
             }
 
             var marketCap = metrics.MaxBy(m => m.Period)?.MarketCap;
             if (marketCap == null)
             {
-                Logger.Warn($"No market cap for {ticker}");
+                _logger.LogWarning($"No market cap for {ticker}");
                 continue;
             }
 
@@ -59,7 +60,7 @@ public class CathieWoodAgent
                     out var tradeSignal))
                 state.AddOrUpdateAgentReport<CathieWoodAgent>(tradeSignal, new[] { disruptive, innovation, valuation });
             else
-                Logger.Error($"Error while running {nameof(CathieWoodAgent)}");
+                _logger.LogError($"Error while running {nameof(CathieWoodAgent)}");
         }
     }
 

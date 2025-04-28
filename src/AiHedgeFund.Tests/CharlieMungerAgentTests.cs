@@ -2,6 +2,7 @@
 using AiHedgeFund.Contracts;
 using AiHedgeFund.Contracts.Model;
 using AiHedgeFund.Tests.Fakes;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace AiHedgeFund.Tests
 {
@@ -65,7 +66,7 @@ namespace AiHedgeFund.Tests
         public void RunPositiveInput()
         {
             // Assign
-            var sut = new CharlieMungerAgent(new FakeHttpLib());
+            var sut = new CharlieMungerAgent(new FakeHttpLib(), new NullLogger<CharlieMungerAgent>());
 
             // Act
            sut.Run(_state);

@@ -1,11 +1,16 @@
 ﻿using AiHedgeFund.Contracts;
-using NLog;
+using Microsoft.Extensions.Logging;
 
 namespace AiHedgeFund.Agents;
 
 public class RiskManagerAgent
 {
-    private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+    private readonly ILogger<RiskManagerAgent> _logger;
+
+    public RiskManagerAgent(ILogger<RiskManagerAgent> logger)
+    {
+        _logger = logger;
+    }
 
     public Dictionary<string, RiskAssessment> Run(TradingWorkflowState state)
     {
@@ -16,7 +21,7 @@ public class RiskManagerAgent
         {
             if (!state.Prices.TryGetValue(ticker, out var prices) || !prices.Any())
             {
-                Logger.Warn($"No price data found for {ticker}");
+                _logger.LogWarning($"No price data found for {ticker}");
                 continue;
             }
 

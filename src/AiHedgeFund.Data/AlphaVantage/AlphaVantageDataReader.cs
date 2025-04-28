@@ -1,21 +1,22 @@
 ﻿using System.Data;
 using AiHedgeFund.Contracts;
 using AiHedgeFund.Contracts.Model;
-using NLog;
 using IDataReader = AiHedgeFund.Contracts.IDataReader;
+using Microsoft.Extensions.Logging;
 
 namespace AiHedgeFund.Data.AlphaVantage;
 
 public class AlphaVantageDataReader : IDataReader
 {
-    private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+    private readonly ILogger<AlphaVantageDataReader> _logger;
     private readonly DataFetcher _dataFetcher;
     private readonly IPriceVolumeProvider _priceVolumeProvider;
 
-    public AlphaVantageDataReader(IHttpClientFactory clientFactory, IPriceVolumeProvider priceVolumeProvider)
+    public AlphaVantageDataReader(IPriceVolumeProvider priceVolumeProvider, ILogger<AlphaVantageDataReader> logger, DataFetcher dataFetcher)
     {
-        _dataFetcher = new DataFetcher(clientFactory);
+        _dataFetcher = dataFetcher;
         _priceVolumeProvider = priceVolumeProvider;
+        _logger = logger;
     }
 
     public bool TryGetPrices(string ticker, DateTime startDate, DateTime endDate, out IEnumerable<Price>? prices)
@@ -67,7 +68,7 @@ public class AlphaVantageDataReader : IDataReader
             if (!_dataFetcher.TryLoadOrFetch<CompanyOverviewRaw, CompanyOverview>($"OVERVIEW:{ticker}",
                     $"query?function=OVERVIEW&symbol={ticker}", CompanyOverviewMapper.Map, out var overviewData))
             {
-                Logger.Error($"I can't retrieve {nameof(overviewData)}");
+                _logger.LogError($"I can't retrieve {nameof(overviewData)}");
                 metrics = default;
                 return false;
             }
@@ -75,7 +76,7 @@ public class AlphaVantageDataReader : IDataReader
             if (!_dataFetcher.TryLoadOrFetch<BalanceSheetRaw, BalanceSheet>($"BALANCE_SHEET:{ticker}",
                     $"query?function=BALANCE_SHEET&symbol={ticker}", BalanceSheetMapper.Map, out var balanceSheetData))
             {
-                Logger.Error($"I can't retrieve {nameof(balanceSheetData)}");
+                _logger.LogError($"I can't retrieve {nameof(balanceSheetData)}");
                 metrics = default;
                 return false;
             }
@@ -84,7 +85,7 @@ public class AlphaVantageDataReader : IDataReader
                     $"query?function=INCOME_STATEMENT&symbol={ticker}", IncomeStatementMapper.Map,
                     out var incomeStatementData))
             {
-                Logger.Error($"I can't retrieve {nameof(incomeStatementData)}");
+                _logger.LogError($"I can't retrieve {nameof(incomeStatementData)}");
                 metrics = default;
                 return false;
             }
@@ -92,7 +93,7 @@ public class AlphaVantageDataReader : IDataReader
             if (!_dataFetcher.TryLoadOrFetch<CashFlowRaw, CashFlow>($"CASH_FLOW:{ticker}",
                     $"query?function=CASH_FLOW&symbol={ticker}", CashFlowMapper.Map, out var cashFlowData))
             {
-                Logger.Error($"I can't retrieve {nameof(cashFlowData)}");
+                _logger.LogError($"I can't retrieve {nameof(cashFlowData)}");
                 metrics = default;
                 return false;
             }
@@ -100,7 +101,7 @@ public class AlphaVantageDataReader : IDataReader
             if (!_dataFetcher.TryLoadOrFetch<EarningsRaw, Earnings>($"EARNINGS:{ticker}",
                     $"query?function=EARNINGS&symbol={ticker}", EarningsMapper.Map, out var earningsData))
             {
-                Logger.Error($"I can't retrieve {nameof(earningsData)}");
+                _logger.LogError($"I can't retrieve {nameof(earningsData)}");
                 metrics = default;
                 return false;
             }
@@ -169,7 +170,7 @@ public class AlphaVantageDataReader : IDataReader
                     var sharesOutstanding = balanceReports[i].CommonStockSharesOutstanding;
                     tmpMetrics.FreeCashFlowPerShare = cf.OperatingCashflow / sharesOutstanding;
                     if(!TryCalculatePayoutRatio(cf, i < incomeReports.Count ? incomeReports[i] : null, out decimal payoutRatio))
-                        Logger.Warn($"Can't calculate payoutRatio for {ticker}");
+                        _logger.LogWarning($"Can't calculate payoutRatio for {ticker}");
                     tmpMetrics.PayoutRatio = payoutRatio;
                     tmpMetrics.OperatingCashFlow = cf.OperatingCashflow;
                     tmpMetrics.CapitalExpenditure = cf.CapitalExpenditures;
@@ -193,7 +194,7 @@ public class AlphaVantageDataReader : IDataReader
         }
         catch (Exception ex)
         {
-            Logger.Error($"{nameof(AlphaVantageDataReader)}/{nameof(TryGetFinancialMetrics)} for {ticker}: {ex.GetBaseException().Message}");
+            _logger.LogError($"{nameof(AlphaVantageDataReader)}/{nameof(TryGetFinancialMetrics)} for {ticker}: {ex.GetBaseException().Message}");
             metrics = internalMetrics;
             return false;
         }
@@ -304,7 +305,7 @@ public class AlphaVantageDataReader : IDataReader
         if (!_dataFetcher.TryLoadOrFetch<NewsSentimentRaw, List<NewsSentiment>>($"NEWS_SENTIMENT:{ticker}",
                 $"query?function=NEWS_SENTIMENT&symbol={ticker}", NewsSentimentMapper.Map, out var newsSentimentData))
         {
-            Logger.Error($"I can't retrieve {nameof(newsSentimentData)}");
+            _logger.LogError($"I can't retrieve {nameof(newsSentimentData)}");
             newsSentiments = default;
             return false;
         }
@@ -334,7 +335,7 @@ public class AlphaVantageDataReader : IDataReader
         if (!_dataFetcher.TryLoadOrFetch<BalanceSheetRaw, BalanceSheet>($"BALANCE_SHEET:{ticker}",
                 $"query?function=BALANCE_SHEET&symbol={ticker}", BalanceSheetMapper.Map, out var balanceSheetData))
         {
-            Logger.Error($"I can't retrieve {nameof(balanceSheetData)}");
+            _logger.LogError($"I can't retrieve {nameof(balanceSheetData)}");
             results = default;
             return false;
         }
@@ -343,7 +344,7 @@ public class AlphaVantageDataReader : IDataReader
                 $"query?function=INCOME_STATEMENT&symbol={ticker}", IncomeStatementMapper.Map,
                 out var incomeStatementData))
         {
-            Logger.Error($"I can't retrieve {nameof(incomeStatementData)}");
+            _logger.LogError($"I can't retrieve {nameof(incomeStatementData)}");
             results = default;
             return false;
         }
@@ -351,7 +352,7 @@ public class AlphaVantageDataReader : IDataReader
         if (!_dataFetcher.TryLoadOrFetch<CashFlowRaw, CashFlow>($"CASH_FLOW:{ticker}",
                 $"query?function=CASH_FLOW&symbol={ticker}", CashFlowMapper.Map, out var cashFlowData))
         {
-            Logger.Error($"I can't retrieve {nameof(cashFlowData)}");
+            _logger.LogError($"I can't retrieve {nameof(cashFlowData)}");
             results = default;
             return false;
         }

@@ -1,38 +1,39 @@
 ﻿using AiHedgeFund.Agents.Services;
 using AiHedgeFund.Contracts;
 using AiHedgeFund.Contracts.Model;
-using NLog;
+using Microsoft.Extensions.Logging; 
 
 namespace AiHedgeFund.Agents;
 
 /// <summary>
 /// Analyzes stocks using Benjamin Graham's classic value-investing principles:
 /// 1. Earnings stability over multiple years.
-/// 2. Solid financial strength(low debt, adequate liquidity).
-/// 3. Discount to intrinsic value(e.g.Graham Number or net-net).
+/// 2. Solid financial strength (low debt, adequate liquidity).
+/// 3. Discount to intrinsic value (e.g., Graham Number or net-net).
 /// 4. Adequate margin of safety.
 /// </summary>
 public class BenGrahamAgent
 {
-    private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
     private readonly IHttpLib _httpLib;
+    private readonly ILogger<BenGrahamAgent> _logger; 
 
-    public BenGrahamAgent(IHttpLib httpLib)
+    public BenGrahamAgent(IHttpLib httpLib, ILogger<BenGrahamAgent> logger)
     {
         _httpLib = httpLib;
+        _logger = logger;
     }
 
     public void Run(TradingWorkflowState state)
     {
         if (!state.Tickers.Any())
         {
-            Logger.Warn("No ticker provided.");
+            _logger.LogWarning("No ticker provided.");
             return;
         }
-        
+
         foreach (var ticker in state.Tickers)
         {
-            Logger.Debug("[BenGraham] Starting analysis for {0}", ticker);
+            _logger.LogDebug("[BenGraham] Starting analysis for {Ticker}", ticker);
 
             var earnings = EarningsStability(state, ticker);
             var strength = FinancialStrength(state, ticker);
@@ -44,7 +45,7 @@ public class BenGrahamAgent
             if (TryGenerateOutput(ticker, totalScore, maxScore, earnings, strength, valuation, out var tradeSignal))
                 state.AddOrUpdateAgentReport<BenGrahamAgent>(tradeSignal, new[] { earnings, strength, valuation });
             else
-                Logger.Error($"Error while running {nameof(BenGrahamAgent)}");
+                _logger.LogError("Error while running {AgentName}", nameof(BenGrahamAgent));
         }
     }
 
@@ -69,18 +70,8 @@ public class BenGrahamAgent
             return result;
         }
 
-        // Determine threshold from risk level
         double growthThreshold = 0.70;
-        // TODO
-        //double growthThreshold = state.RiskLevel?.ToLower() switch
-        //{
-        //    "low" => 0.80,
-        //    "medium" => 0.70,
-        //    "high" => 0.60,
-        //    _ => 0.70 // default to medium
-        //};
 
-        // EPS positivity
         int positiveYears = epsValues.Count(e => e > 0);
         if (positiveYears == epsValues.Count)
         {
@@ -97,7 +88,6 @@ public class BenGrahamAgent
             result.AddDetail("EPS was negative in multiple periods.");
         }
 
-        // EPS trend analysis
         int growthPeriods = epsValues
             .Zip(epsValues.Skip(1), (prev, next) => next > prev ? 1 : 0)
             .Sum();
@@ -118,7 +108,6 @@ public class BenGrahamAgent
             result.AddDetail("EPS did not grow.");
         }
 
-        // EPS growth rate trend
         var growthRates = metrics
             .Where(m => m.EarningsPerShareGrowth.HasValue)
             .Select(m => m.EarningsPerShareGrowth.Value)
@@ -146,7 +135,7 @@ public class BenGrahamAgent
     private FinancialAnalysisResult FinancialStrength(TradingWorkflowState state, string ticker)
     {
         var result = new FinancialAnalysisResult(nameof(FinancialStrength), 0, new List<string>());
-        
+
         if (!state.FinancialLineItems.TryGetValue(ticker, out var items) || !TryGetLatestCompleteItem(items, out var latest))
         {
             result.AddDetail("No data for financial strength.");
@@ -233,7 +222,6 @@ public class BenGrahamAgent
 
         return result;
     }
-
 
     private static bool TryGetLatestCompleteItem(IEnumerable<FinancialLineItem> items, out FinancialLineItem? result)
     {

@@ -1,14 +1,11 @@
 ﻿using System.Text.Json;
 using System.Text.RegularExpressions;
 using AiHedgeFund.Contracts;
-using NLog;
 
 namespace AiHedgeFund.Agents.Services;
 
 public static class LlmTradeSignalGenerator
 {
-    private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
-
     public static bool TryGenerateSignal(
         IHttpLib httpLib,
         string endpoint,
@@ -44,8 +41,6 @@ Return JSON exactly in this format:
         };
 
         var json = JsonSerializer.Serialize(payload);
-
-        Logger.Debug("LLM Post request started...");
 
         if (!httpLib.TryPost(endpoint, json, out var response))
         {

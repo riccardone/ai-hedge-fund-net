@@ -1,45 +1,46 @@
 ﻿using AiHedgeFund.Agents.Services;
 using AiHedgeFund.Contracts;
 using AiHedgeFund.Contracts.Model;
-using NLog;
+using Microsoft.Extensions.Logging;
 
 namespace AiHedgeFund.Agents;
 
 public class WarrenBuffettAgent
 {
-    private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+    private readonly ILogger<WarrenBuffettAgent> _logger;
     private readonly IHttpLib _httpLib;
     private readonly IValuationEngine _valuationEngine;
 
-    public WarrenBuffettAgent(IHttpLib httpLib, IValuationEngine valuationEngine)
+    public WarrenBuffettAgent(IHttpLib httpLib, IValuationEngine valuationEngine, ILogger<WarrenBuffettAgent> logger)
     {
         _httpLib = httpLib;
         _valuationEngine = valuationEngine;
+        _logger = logger;
     }
 
     public void Run(TradingWorkflowState state)
     {
         if (!state.Tickers.Any())
         {
-            Logger.Warn("No tickers provided.");
+            _logger.LogWarning("No tickers provided.");
             return;
         }
 
         foreach (var ticker in state.Tickers)
         {
-            Logger.Debug("[Warren Buffett] Starting analysis for {0}", ticker);
+            _logger.LogDebug("[Warren Buffett] Starting analysis for {0}", ticker);
 
             if (!state.FinancialMetrics.TryGetValue(ticker, out var metrics) ||
                 !state.FinancialLineItems.TryGetValue(ticker, out var lineItems))
             {
-                Logger.Warn($"Missing financial data for {ticker}");
+                _logger.LogWarning($"Missing financial data for {ticker}");
                 continue;
             }
 
             var marketCap = metrics.MaxBy(m => m.Period)?.MarketCap;
             if (marketCap == null)
             {
-                Logger.Warn($"No market cap for {ticker}");
+                _logger.LogWarning($"No market cap for {ticker}");
                 continue;
             }
 
@@ -80,7 +81,7 @@ public class WarrenBuffettAgent
                             : null
                     });
             else
-                Logger.Error($"Error while generating signal for {ticker}");
+                _logger.LogError($"Error while generating signal for {ticker}");
         }
     }
 

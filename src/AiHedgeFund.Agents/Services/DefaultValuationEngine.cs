@@ -1,12 +1,17 @@
 ﻿using AiHedgeFund.Contracts;
 using AiHedgeFund.Contracts.Model;
-using NLog;
+using Microsoft.Extensions.Logging;
 
 namespace AiHedgeFund.Agents.Services;
 
 public class DefaultValuationEngine : IValuationEngine
 {
-    private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+    private readonly ILogger<DefaultValuationEngine> _logger;
+
+    public DefaultValuationEngine(ILogger<DefaultValuationEngine> logger)
+    {
+        _logger = logger;
+    }
 
     private static decimal Pow(decimal baseValue, int exponent)
     {
@@ -31,19 +36,19 @@ public class DefaultValuationEngine : IValuationEngine
         result = null;
         if (latest == null)
         {
-            Logger?.Warn("Valuation basis could not be determined (the latest metric object is null)");
+            _logger?.LogWarning("Valuation basis could not be determined (the latest metric object is null)");
             return false;
         }
 
         if (latest.OutstandingShares == null)
         {
-            Logger?.Warn("Valuation basis could not be determined (missing OutstandingShares)");
+            _logger?.LogWarning("Valuation basis could not be determined (missing OutstandingShares)");
             return false;
         }
 
         if (latest.OutstandingShares == 0)
         {
-            Logger?.Warn("Valuation basis could not be determined (OutstandingShares is 0)");
+            _logger?.LogWarning("Valuation basis could not be determined (OutstandingShares is 0)");
             return false;
         }
 
@@ -76,7 +81,7 @@ public class DefaultValuationEngine : IValuationEngine
 
         if (!valuationBasis.HasValue)
         {
-            Logger?.Warn("Valuation basis could not be determined (missing required metrics)");
+            _logger?.LogWarning("Valuation basis could not be determined (missing required metrics)");
             return false;
         }
 

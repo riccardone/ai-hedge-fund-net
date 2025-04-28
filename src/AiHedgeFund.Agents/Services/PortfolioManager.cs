@@ -1,17 +1,18 @@
 ﻿using AiHedgeFund.Contracts;
 using AiHedgeFund.Contracts.Model;
-using NLog;
+using Microsoft.Extensions.Logging;
 
 namespace AiHedgeFund.Agents.Services;
 
 public class PortfolioManager
 {
-    private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+    private readonly ILogger<PortfolioManager> _logger;
     private readonly IAgentRegistry _agentRegistry;
 
-    public PortfolioManager(IAgentRegistry agentRegistry)
+    public PortfolioManager(IAgentRegistry agentRegistry, ILogger<PortfolioManager> logger)
     {
         _agentRegistry = agentRegistry;
+        _logger = logger;
     }
 
     public void Evaluate(string agentName, TradingWorkflowState state)
@@ -19,7 +20,7 @@ public class PortfolioManager
         if (_agentRegistry.TryGet<AgentReport>(agentName, out var agentFunc))
             agentFunc(state);
         else
-            Logger.Warn("Agent not found or type mismatch");
+            _logger.LogWarning("Agent not found or type mismatch");
     }
 
     public void RunRiskAssessments(string agentName, TradingWorkflowState state, RiskManagerAgent riskAgent)

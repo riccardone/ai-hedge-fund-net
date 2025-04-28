@@ -1,7 +1,7 @@
 ﻿using AiHedgeFund.Agents.Services;
 using AiHedgeFund.Contracts;
 using AiHedgeFund.Contracts.Model;
-using NLog;
+using Microsoft.Extensions.Logging;
 
 namespace AiHedgeFund.Agents;
 
@@ -11,37 +11,38 @@ namespace AiHedgeFund.Agents;
 /// </summary>
 public class BillAckmanAgent
 {
-    private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+    private readonly ILogger<BillAckmanAgent> _logger;
     private readonly IHttpLib _httpLib;
 
-    public BillAckmanAgent(IHttpLib httpLib)
+    public BillAckmanAgent(IHttpLib httpLib, ILogger<BillAckmanAgent> logger)
     {
         _httpLib = httpLib;
+        _logger = logger;
     }
 
     public void Run(TradingWorkflowState state)
     {
         if (!state.Tickers.Any())
         {
-            Logger.Warn("No ticker provided.");
+            _logger.LogWarning("No ticker provided.");
             return;
         }
         
         foreach (var ticker in state.Tickers)
         {
-            Logger.Debug("[BillAckman] Starting analysis for {0}", ticker);
+            _logger.LogDebug("[BillAckman] Starting analysis for {Ticker}", ticker);
 
             if (!state.FinancialMetrics.TryGetValue(ticker, out var metrics)
                 || !state.FinancialLineItems.TryGetValue(ticker, out var lineItems))
             {
-                Logger.Warn($"Missing data for {ticker}");
+                _logger.LogWarning($"Missing data for {ticker}");
                 continue;
             }
 
             var marketCap = metrics.MaxBy(m => m.Period)?.MarketCap;
             if (marketCap == null)
             {
-                Logger.Warn($"No market cap for {ticker}");
+                _logger.LogWarning($"No market cap for {ticker}");
                 continue;
             }
 
@@ -57,7 +58,7 @@ public class BillAckmanAgent
                 state.AddOrUpdateAgentReport<BillAckmanAgent>(tradeSignal,
                     new[] { businessQuality, financialDiscipline, valuation });
             else
-                Logger.Error($"Error while running {nameof(BillAckmanAgent)}");
+                _logger.LogError($"Error while running {nameof(BillAckmanAgent)}");
         }
     }
 

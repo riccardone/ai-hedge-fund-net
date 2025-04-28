@@ -1,43 +1,44 @@
 ﻿using AiHedgeFund.Agents.Services;
 using AiHedgeFund.Contracts;
 using AiHedgeFund.Contracts.Model;
-using NLog;
+using Microsoft.Extensions.Logging;
 
 namespace AiHedgeFund.Agents;
 
 public class StanleyDruckenmillerAgent
 {
-    private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+    private readonly ILogger<StanleyDruckenmillerAgent> _logger;
     private readonly IHttpLib _httpLib;
 
-    public StanleyDruckenmillerAgent(IHttpLib httpLib)
+    public StanleyDruckenmillerAgent(IHttpLib httpLib, ILogger<StanleyDruckenmillerAgent> logger)
     {
         _httpLib = httpLib;
+        _logger = logger;
     }
 
     public void Run(TradingWorkflowState state)
     {
         if (!state.Tickers.Any())
         {
-            Logger.Warn("No ticker provided.");
+            _logger.LogWarning("No ticker provided.");
             return;
         }
 
         foreach (var ticker in state.Tickers)
         {
-            Logger.Debug("[StanleyDruckenmiller] Starting analysis for {0}", ticker);
+            _logger.LogDebug("[StanleyDruckenmiller] Starting analysis for {0}", ticker);
 
             if (!state.FinancialMetrics.TryGetValue(ticker, out var metrics) ||
                 !state.FinancialLineItems.TryGetValue(ticker, out var lineItems))
             {
-                Logger.Warn($"Missing financial data for {ticker}");
+                _logger.LogWarning($"Missing financial data for {ticker}");
                 continue;
             }
 
             var marketCap = metrics.OrderByDescending(m => m.EndDate).FirstOrDefault()?.MarketCap;
             if (marketCap == null)
             {
-                Logger.Warn($"No market cap for {ticker}");
+                _logger.LogWarning($"No market cap for {ticker}");
                 continue;
             }
 
@@ -60,7 +61,7 @@ public class StanleyDruckenmillerAgent
             if (TryGenerateOutput(ticker, growthMomentum, riskReward, valuation, sentiment, insiderActivity, totalScore, maxScore, out var tradeSignal))
                 state.AddOrUpdateAgentReport<StanleyDruckenmillerAgent>(tradeSignal, new []{ growthMomentum, riskReward, sentiment, insiderActivity, valuation });
             else
-                Logger.Error($"Error while running {nameof(StanleyDruckenmillerAgent)} for {ticker}");
+                _logger.LogError($"Error while running {nameof(StanleyDruckenmillerAgent)} for {ticker}");
         }
     }
 
