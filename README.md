@@ -1,21 +1,3 @@
-## Download and Run the Program
-
-1. Go to the **Releases** section and download the latest release.
-2. Run the program with `--help` or `-h` to see usage instructions:
-
-```bash
-> AiHedgeFund.Console --help
-```
-
-3. Run the program by specifying one or more agents and one or more stock tickers:
-
-```bash
-> AiHedgeFund.Console --agent cathie_wood ben_graham --tickers MSFT AAPL
-```
-This is an example of output for NVidia using warren_buffett and cathie_wood agents ![image](https://github.com/user-attachments/assets/a56c89b4-a86c-4299-8645-2d10177f2dc9)
-
----
-
 # ai-hedge-fund-net
 
 **ai-hedge-fund-net** is a .NET alghoritmic program that provides trading signals by analyzing stocks using multiple AI agents. Each agent applies a different investment philosophy to decide whether a stock is a **buy**, **hold**, or **sell**. Agents also provide their **reasoning**, **confidence score**, **key metrics**, and **specific rules** behind each decision.
@@ -30,11 +12,27 @@ Currently, the following agents are implemented:
 - `warren_buffett` (value investing, moat, long-term)
 
 Each agent integrates with an LLM (Large Language Model) trained for financial reasoning to generate the insights behind its signals.
+This is an example of output for NVidia using warren_buffett and cathie_wood agents ![image](https://github.com/user-attachments/assets/a56c89b4-a86c-4299-8645-2d10177f2dc9)
 
 This .NET project is inspired by the [ai-hedge-fund](https://github.com/virattt/ai-hedge-fund) project written in Python.
 
 ---
+## Download and Run the Program
 
+1. Go to the **Releases** section and download the latest release.
+2. Run the program with `--help` or `-h` to see usage instructions:
+
+```bash
+> AiHedgeFund.Console --help
+```
+
+3. Run the program by specifying one or more agents and one or more stock tickers:
+
+```bash
+> AiHedgeFund.Console --agent cathie_wood ben_graham --tickers MSFT AAPL
+```
+
+---
 ## Configuration
 
 This project uses **Alpha Vantage** as the financial data provider. I have no affiliation or sponsorship with them—it simply happened that I created a free API key there and stuck with it. Once the initial porting and development phase is complete, I plan to support additional providers by implementing the `IDataReader` interface.
