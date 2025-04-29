@@ -12,6 +12,7 @@
 ```bash
 > AiHedgeFund.Console --agent cathie_wood ben_graham --tickers MSFT AAPL
 ```
+This is an example of output for NVidia using warren_buffett and cathie_wood agents ![image](https://github.com/user-attachments/assets/a56c89b4-a86c-4299-8645-2d10177f2dc9)
 
 ---
 
