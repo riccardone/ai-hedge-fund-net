@@ -12,9 +12,8 @@ Currently, the following agents are implemented:
 - `warren_buffett` (value investing, moat, long-term)
 
 Each agent integrates with an LLM (Large Language Model) trained for financial reasoning to generate the insights behind its signals.
-This is an example of output for NVidia using warren_buffett and cathie_wood agents ![image](https://github.com/user-attachments/assets/a56c89b4-a86c-4299-8645-2d10177f2dc9)
 
-This .NET project is inspired by the [ai-hedge-fund](https://github.com/virattt/ai-hedge-fund) project written in Python.
+This is an example of output for NVidia using warren_buffett and cathie_wood agents ![image](https://github.com/user-attachments/assets/a56c89b4-a86c-4299-8645-2d10177f2dc9)
 
 ---
 ## Download and Run the Program
@@ -67,3 +66,9 @@ Example `appsettings.json`:
 All financial data is fetched from the remote API **once**, then serialized to disk and cached in memory. On subsequent runs with the same tickers, the program will use the cached data instead of re-fetching it.
 
 To **force a data refresh**, manually delete the `data` folder located in the same directory as the program. A command-line parameter to automate this will be added soon.
+
+---
+
+## Credits
+
+This .NET project is loosely inspired by the [ai-hedge-fund](https://github.com/virattt/ai-hedge-fund) project written in Python.
