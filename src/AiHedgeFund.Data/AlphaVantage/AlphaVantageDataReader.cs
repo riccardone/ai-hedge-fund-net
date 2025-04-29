@@ -106,11 +106,11 @@ public class AlphaVantageDataReader : IDataReader
                 return false;
             }
 
-            var annualBalanceReports = GetFilteredReports(balanceSheetData.AnnualReports, endDate, limit, r => r.FiscalDateEnding);
-            var annualIncomeReports = GetFilteredReports(incomeStatementData.AnnualReports, endDate, limit, r => r.FiscalDateEnding);
-            var annualCashFlowReports = GetFilteredReports(cashFlowData.AnnualReports, endDate, limit, r => r.FiscalDateEnding);
-            var quarterlyCashFlowReports = GetFilteredReports(cashFlowData.QuarterlyReports, endDate, 4, r => r.FiscalDateEnding);
-            var quarterlyEarningsReports = GetFilteredReports(earningsData.QuarterlyEarnings, endDate, 4, r => r.FiscalDateEnding);
+            //var annualBalanceReports = GetFilteredReports(balanceSheetData.AnnualReports, endDate, limit, r => r.FiscalDateEnding);
+            //var annualIncomeReports = GetFilteredReports(incomeStatementData.AnnualReports, endDate, limit, r => r.FiscalDateEnding);
+            //var annualCashFlowReports = GetFilteredReports(cashFlowData.AnnualReports, endDate, limit, r => r.FiscalDateEnding);
+            //var quarterlyCashFlowReports = GetFilteredReports(cashFlowData.QuarterlyReports, endDate, 4, r => r.FiscalDateEnding);
+            //var quarterlyEarningsReports = GetFilteredReports(earningsData.QuarterlyEarnings, endDate, 4, r => r.FiscalDateEnding);
 
             var balanceReports = GetFilteredReports(balanceSheetData.AnnualReports, endDate, limit, r => r.FiscalDateEnding);
             var incomeReports = GetFilteredReports(incomeStatementData.AnnualReports, endDate, 2, r => r.FiscalDateEnding);
@@ -131,6 +131,7 @@ public class AlphaVantageDataReader : IDataReader
                     tmpMetrics.EarningsPerShare = overviewData.EPS;
                     tmpMetrics.RevenueGrowth = overviewData.QuarterlyRevenueGrowthYOY;
                     tmpMetrics.OutstandingShares = overviewData.SharesOutstanding;
+                    tmpMetrics.Industry = overviewData.Industry;
                 }
 
                 if (i < balanceReports.Count)

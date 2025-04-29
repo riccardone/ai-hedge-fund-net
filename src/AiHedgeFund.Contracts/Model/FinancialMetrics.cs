@@ -5,6 +5,7 @@ namespace AiHedgeFund.Contracts.Model;
 public class FinancialMetrics
 {
     public string Ticker { get; set; }
+    public string Industry { get; set; }
     public string ReportPeriod { get; set; }
     public string Period { get; set; } = "ttm";
     public DateTime EndDate { get; set; }

@@ -1,4 +1,4 @@
-﻿namespace AiHedgeFund.Data;
+﻿namespace AiHedgeFund.Data.AlphaVantage;
 
 public class AlphaVantageAuthHandler : DelegatingHandler
 {

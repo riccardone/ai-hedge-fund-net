@@ -10,7 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using AlphaVantageAuthHandler = AiHedgeFund.Data.AlphaVantageAuthHandler;
+using AlphaVantageAuthHandler = AiHedgeFund.Data.AlphaVantage.AlphaVantageAuthHandler;
 
 namespace AiHedgeFund.Console;
 

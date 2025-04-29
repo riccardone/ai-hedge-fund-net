@@ -201,14 +201,54 @@ public class CathieWoodAgent
 
     private FinancialAnalysisResult Valuation(IEnumerable<FinancialMetrics> metrics, decimal marketCap)
     {
-        var fcf = metrics.Where(v => v.OperatingCashFlow.HasValue).Select(li => li.OperatingCashFlow).ToList();
-        if (fcf.Count == 0 || fcf[^1] <= 0)
-            return new FinancialAnalysisResult(nameof(Valuation), 0, new []{$"No positive FCF for valuation; FCF = {fcf.LastOrDefault():N2}"});
+        var fcfList = metrics.Where(v => v.OperatingCashFlow.HasValue)
+                              .OrderByDescending(v => v.Period)
+                              .Select(v => v.OperatingCashFlow.Value)
+                              .ToList();
 
-        var baseFcf = fcf[^1].Value;
-        const decimal growthRate = 0.20m;
+        if (fcfList.Count == 0)
+            return new FinancialAnalysisResult(nameof(Valuation), 0, new[] { "No positive OperatingCashFlow available" });
+
+        decimal baseFcf;
+        bool isQuarterly = metrics.Count() > 4; // crude, better if you have IsQuarterly flag
+
+        if (isQuarterly)
+            baseFcf = fcfList.Take(4).Sum(); // Sum last 4 quarters
+        else
+            baseFcf = fcfList.First(); // Use latest annual
+
+        // Dynamic sector-based assumptions
+        decimal growthRate;
+        int terminalMultiple;
+
+        var sector = metrics.First(m => !string.IsNullOrWhiteSpace(m.Industry)).Industry.ToLower();
+        if (sector.Contains("ai") || sector.Contains("semiconductors"))
+        {
+            growthRate = 0.30m;
+            terminalMultiple = 35;
+        }
+        else if (sector.Contains("biotech") || sector.Contains("genomics"))
+        {
+            growthRate = 0.25m;
+            terminalMultiple = 30;
+        }
+        else if (sector.Contains("fintech") || sector.Contains("crypto"))
+        {
+            growthRate = 0.20m;
+            terminalMultiple = 25;
+        }
+        else if (sector.Contains("ev") || sector.Contains("energy"))
+        {
+            growthRate = 0.25m;
+            terminalMultiple = 30;
+        }
+        else
+        {
+            growthRate = 0.20m;
+            terminalMultiple = 25;
+        }
+
         const decimal discountRate = 0.15m;
-        const int terminalMultiple = 25;
         const int years = 5;
 
         decimal presentValue = 0;
@@ -221,15 +261,17 @@ public class CathieWoodAgent
 
         var terminalValue = (baseFcf * (decimal)Math.Pow((double)(1 + growthRate), years) * terminalMultiple)
                              / (decimal)Math.Pow((double)(1 + discountRate), years);
+
         var intrinsicValue = presentValue + terminalValue;
         var marginOfSafety = (intrinsicValue - marketCap) / marketCap;
 
         int score = 0;
         if (marginOfSafety > 0.5m) score += 3;
-        else if (marginOfSafety > 0.2m) score += 1;
+        else if (marginOfSafety > 0.2m) score += 2;
+        else if (marginOfSafety > 0m) score += 1;
 
         var details = $"Intrinsic value: ~{intrinsicValue:N0}; Market cap: ~{marketCap:N0}; Margin of safety: {marginOfSafety:P1}";
-        return new FinancialAnalysisResult(nameof(Valuation), score, new []{details});
+        return new FinancialAnalysisResult(nameof(Valuation), score, new[] { details });
     }
 
     private bool TryGenerateOutput(TradingWorkflowState state, string ticker, FinancialAnalysisResult disruptive,
