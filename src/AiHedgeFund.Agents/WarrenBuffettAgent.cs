@@ -80,6 +80,12 @@ public class WarrenBuffettAgent
             return result;
         }
 
+        if (latest.OutstandingShares > 10_000_000_000M)
+        {
+            result.AddDetail($"Warning: OutstandingShares unusually high ({latest.OutstandingShares.Value:N0}). Assuming data error and dividing by 10.");
+            latest.OutstandingShares /= 10M; // Auto-correct
+        }
+
         decimal? valuationBasis = null;
         string basisLabel = "Unknown";
 
