@@ -1,5 +1,4 @@
-﻿using AiHedgeFund.Contracts;
-using AiHedgeFund.Contracts.Model;
+﻿using AiHedgeFund.Contracts.Model;
 
 namespace AiHedgeFund.Agents.Services;
 

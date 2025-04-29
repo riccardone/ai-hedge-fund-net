@@ -25,7 +25,6 @@ internal class Program
                 services.AddSingleton(appArgs);
                 services.AddSingleton<IDataReader, AlphaVantageDataReader>();
                 services.AddSingleton<IPriceVolumeProvider, FakePriceVolumeProvider>();
-                services.AddSingleton<IValuationEngine, DefaultValuationEngine>();
                 services.AddSingleton<IHttpLib, OpenAiHttp>();
                 services.AddSingleton<TradingInitializer>();
                 services.AddSingleton<DataFetcher>();

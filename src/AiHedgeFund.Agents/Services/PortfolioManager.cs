@@ -34,14 +34,5 @@ public class PortfolioManager
         {
             state.RiskAssessments[agentName][kvp.Key] = kvp.Value;
         }
-
-        //if (state.ShowReasoning)
-        //{
-        //    foreach (var (ticker, assessment) in results)
-        //    {
-        //        var r = assessment.Reasoning;
-        //        Logger.Info($"[RiskAssessment:{agentName}] {ticker} - Position: {r.CurrentPosition}, Limit: {r.PositionLimit}, Remaining: {r.RemainingLimit}, Cash: {r.AvailableCash}");
-        //    }
-        //}
     }
 }

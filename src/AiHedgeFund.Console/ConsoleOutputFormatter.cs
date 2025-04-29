@@ -49,27 +49,5 @@ public static class ConsoleOutputFormatter
                 }
             }
         }
-
-        AnsiConsole.MarkupLine($"{Colorize("======================================================================", "gray")}");
-    }
-
-    public static void ExportReportsToCsv(string filePath, List<AgentReport> reports)
-    {
-        using var writer = new StreamWriter(filePath);
-        writer.WriteLine("AgentName,Title,Value,Signal,Confidence,Reasoning");
-        foreach (var report in reports)
-        {
-            foreach (var section in report.FinancialAnalysisResults)
-            {
-                writer.WriteLine(
-                    $"{Escape(report.AgentName)},{Escape(section.Title)},{Escape($"{section.Score}/{section.MaxScore}")},{Escape(report.TradeSignal.Signal)},{report.Confidence},{Escape(report.Reasoning)}");
-            }
-        }
-    }
-
-    private static string Escape(string input)
-    {
-        if (string.IsNullOrWhiteSpace(input)) return "";
-        return $"\"{input.Replace("\"", "\"\"")}\"";
     }
 }

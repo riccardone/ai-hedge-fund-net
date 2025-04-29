@@ -9,12 +9,10 @@ public class WarrenBuffettAgent
 {
     private readonly ILogger<WarrenBuffettAgent> _logger;
     private readonly IHttpLib _httpLib;
-    private readonly IValuationEngine _valuationEngine;
 
-    public WarrenBuffettAgent(IHttpLib httpLib, IValuationEngine valuationEngine, ILogger<WarrenBuffettAgent> logger)
+    public WarrenBuffettAgent(IHttpLib httpLib, ILogger<WarrenBuffettAgent> logger)
     {
         _httpLib = httpLib;
-        _valuationEngine = valuationEngine;
         _logger = logger;
     }
 
@@ -46,43 +44,154 @@ public class WarrenBuffettAgent
 
             var fundamentals = Fundamentals(metrics); // max score: 7
             var consistency = Consistency(metrics, state.RiskLevel); // max score: 3
-            ValuationSummary? valuationSummary = null;
-            if(_valuationEngine.TryCalculateIntrinsicValue(metrics.MaxBy(m => m.ReportPeriod), state.RiskLevel, state.Prices[ticker].MinBy(p => p.Date)?.Close, out var summary))
-            {
-                valuationSummary = summary;
-            }
+            var valuation = Valuation(metrics, RiskLevel.Medium, state.Prices[ticker]);
 
-            int totalScore = fundamentals.Score + consistency.Score;
-            int maxScore = fundamentals.MaxScore + consistency.MaxScore;
+            var totalScore = fundamentals.Score + consistency.Score + valuation.Score;
+            var maxScore = fundamentals.MaxScore + consistency.MaxScore + valuation.MaxScore;
 
-            decimal? marginOfSafety = null;
-
-            if (valuationSummary.IntrinsicValue.HasValue && marketCap.HasValue && marketCap > 0)
-            {
-                marginOfSafety = (valuationSummary.IntrinsicValue.Value * metrics.OrderByDescending(m => m.EndDate).First().OutstandingShares ?? 1) - marketCap.Value;
-                marginOfSafety /= marketCap.Value;
-
-                if (marginOfSafety > 0.3m)
-                {
-                    totalScore += 2;
-                    maxScore += 2;
-                }
-            }
-
-            if (TryGenerateOutput(ticker, fundamentals, consistency, valuationSummary, totalScore, maxScore,
+            if (TryGenerateOutput(ticker, fundamentals, consistency, valuation, totalScore, maxScore,
                     out var tradeSignal))
-                state.AddOrUpdateAgentReport<WarrenBuffettAgent>(tradeSignal,
-                    new[]
-                    {
-                        fundamentals, consistency,
-                        valuationSummary != null && valuationSummary.IntrinsicValue.HasValue
-                            ? new FinancialAnalysisResult("IntrinsicValue", (int)valuationSummary.IntrinsicValue.Value,
-                                new List<string>(), 10)
-                            : null
-                    });
+                state.AddOrUpdateAgentReport<WarrenBuffettAgent>(tradeSignal, new[] { fundamentals, consistency, valuation });
             else
                 _logger.LogError($"Error while generating signal for {ticker}");
         }
+    }
+
+    private static FinancialAnalysisResult Valuation(IEnumerable<FinancialMetrics> metrics, RiskLevel riskLevel, IEnumerable<Price> prices)
+    {
+        var result = new FinancialAnalysisResult("Intrinsic value", 0, 10);
+        var latest = metrics.MaxBy(m => m.ReportPeriod);
+
+        if (latest == null)
+        {
+            result.AddDetail("Valuation basis could not be determined (the latest metric object is null)");
+            return result;
+        }
+
+        if (latest.OutstandingShares == null)
+        {
+            result.AddDetail("Valuation basis could not be determined (missing OutstandingShares)");
+            return result;
+        }
+
+        if (latest.OutstandingShares == 0)
+        {
+            result.AddDetail("Valuation basis could not be determined (OutstandingShares is 0)");
+            return result;
+        }
+
+        decimal? valuationBasis = null;
+        string basisLabel = "Unknown";
+
+        switch (riskLevel)
+        {
+            case RiskLevel.Low:
+                var netIncome = latest.NetIncome;
+                var depreciation = latest.DepreciationAndAmortization;
+                var capex = latest.CapitalExpenditure;
+                if (netIncome.HasValue && depreciation.HasValue && capex.HasValue)
+                {
+                    var maintenanceCapEx = capex.Value * 0.75m;
+                    valuationBasis = netIncome.Value + depreciation.Value - maintenanceCapEx;
+                    basisLabel = "Owner Earnings";
+                }
+                break;
+            case RiskLevel.Medium:
+            case RiskLevel.High:
+                if (latest.OperatingCashFlow.HasValue && latest.CapitalExpenditure.HasValue)
+                {
+                    valuationBasis = latest.OperatingCashFlow.Value - latest.CapitalExpenditure.Value;
+                    basisLabel = "Free Cash Flow";
+                }
+                break;
+        }
+
+        if (!valuationBasis.HasValue)
+        {
+            result.AddDetail("Valuation basis could not be determined (missing required metrics)");
+            return result;
+        }
+
+        // Risk-based assumptions
+        decimal growthRate, discountRate;
+        int terminalMultiple;
+
+        switch (riskLevel)
+        {
+            case RiskLevel.Low:
+                growthRate = 0.05m;
+                discountRate = 0.09m;
+                terminalMultiple = 12;
+                break;
+            case RiskLevel.Medium:
+                growthRate = 0.08m;
+                discountRate = 0.07m;
+                terminalMultiple = 16;
+                break;
+            default:
+                growthRate = 0.12m;
+                discountRate = 0.06m;
+                terminalMultiple = 20;
+                break;
+        }
+
+        const int projectionYears = 10;
+        decimal futureValue = 0;
+
+        for (int year = 1; year <= projectionYears; year++)
+        {
+            var future = valuationBasis.Value * Pow(1 + growthRate, year);
+            var present = future / Pow(1 + discountRate, year);
+            futureValue += present;
+        }
+
+        var terminalValue = (valuationBasis.Value * Pow(1 + growthRate, projectionYears) * terminalMultiple)
+                            / Pow(1 + discountRate, projectionYears);
+
+        var intrinsicValueTotal = futureValue + terminalValue;
+        var intrinsicValuePerShare = intrinsicValueTotal / latest.OutstandingShares.Value;
+
+        decimal? marginOfSafety = null;
+        var currentPrice = prices.MinBy(p => p.Date)?.Close;
+        if (currentPrice.HasValue && currentPrice.Value > 0)
+            marginOfSafety = (intrinsicValuePerShare - currentPrice.Value) / currentPrice.Value;
+
+        // If valuation available
+        if (marginOfSafety > 0.3m)
+        {
+            result.SetScore(10);
+            result.AddDetail("Margin of Safety is excellent (>30%)");
+        }
+        else if (marginOfSafety > 0)
+        {
+            result.SetScore(8);
+            result.AddDetail("Positive but small Margin of Safety");
+        }
+        else
+        {
+            result.SetScore(2);
+            result.AddDetail("Negative Margin of Safety (stock is overpriced)");
+        }
+
+        return result;
+    }
+
+    private static decimal Pow(decimal baseValue, int exponent)
+    {
+        if (exponent == 0) return 1;
+        if (exponent < 0) throw new ArgumentOutOfRangeException(nameof(exponent));
+
+        decimal result = 1;
+        while (exponent > 0)
+        {
+            if ((exponent & 1) == 1)
+                result *= baseValue;
+
+            baseValue *= baseValue;
+            exponent >>= 1;
+        }
+
+        return result;
     }
 
     /// <summary>
@@ -100,7 +209,7 @@ public class WarrenBuffettAgent
     {
         var latest = metrics.MaxBy(m => m.EndDate);
         if (latest == null)
-            return new FinancialAnalysisResult(nameof(Fundamentals),0, new[] { "No recent financial metrics available." });
+            return new FinancialAnalysisResult(nameof(Fundamentals), 0, new[] { "No recent financial metrics available." });
 
         var score = 0;
         var details = new List<string>();
@@ -262,7 +371,7 @@ public class WarrenBuffettAgent
     }
 
     private bool TryGenerateOutput(string ticker, FinancialAnalysisResult fundamentals,
-        FinancialAnalysisResult consistency, ValuationSummary valuationSummary, double totalScore, int maxScore,
+        FinancialAnalysisResult consistency, FinancialAnalysisResult valuationSummary, double totalScore, int maxScore,
         out TradeSignal tradeSignal)
     {
         tradeSignal = default!;
@@ -291,13 +400,7 @@ public class WarrenBuffettAgent
             max_score = maxScore,
             Fundamentals = fundamentals,
             Consistency = consistency,
-            MarginOfSafety = valuationSummary.MarginOfSafety,
-            IntrinsicValue = valuationSummary.IntrinsicValue,
-            DiscountRate = valuationSummary.DiscountRate,
-            GrowthRate = valuationSummary.GrowthRate,
-            AcceptedRiskLevel = valuationSummary.RiskLevel,
-            TerminalMultiple = valuationSummary.TerminalMultiple,
-            ValuationBasis = valuationSummary.ValuationBasis
+            IntrinsicValue = valuationSummary
         };
 
         return LlmTradeSignalGenerator.TryGenerateSignal(

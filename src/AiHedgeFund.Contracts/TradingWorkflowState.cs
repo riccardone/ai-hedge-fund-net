@@ -5,19 +5,16 @@ namespace AiHedgeFund.Contracts;
 
 public class TradingWorkflowState
 {
-    public IDictionary<string, IEnumerable<NewsSentiment>> CompanyNews { get; set; } = new Dictionary<string, IEnumerable<NewsSentiment>>();
+    public IDictionary<string, IEnumerable<NewsSentiment>> CompanyNews { get; } = new Dictionary<string, IEnumerable<NewsSentiment>>();
     public IDictionary<string, IEnumerable<FinancialMetrics>> FinancialMetrics { get; set; } = new Dictionary<string, IEnumerable<FinancialMetrics>>();
     public IDictionary<string, IEnumerable<FinancialLineItem>> FinancialLineItems { get; set; } = new Dictionary<string, IEnumerable<FinancialLineItem>>();
-    public IDictionary<string, IEnumerable<Price>> Prices { get; set; } = new Dictionary<string, IEnumerable<Price>>();
+    public IDictionary<string, IEnumerable<Price>> Prices { get; } = new Dictionary<string, IEnumerable<Price>>();
     public DateTime StartDate { get; set; } 
     public DateTime EndDate { get; set; } 
-    //public bool ShowReasoning { get; set; }
     public List<string> SelectedAnalysts { get; set; } = new();
     public string ModelName { get; set; } = "gpt-4o";
     public string ModelProvider { get; set; } = "OpenAI";
     public RiskLevel RiskLevel { get; set; }
-    //public decimal MarginRequirement { get; set; }
-    //public decimal InitialCash { get; set; }
     public List<string> Tickers { get; set; } = new(); 
     public Portfolio Portfolio { get; set; } = new();
     private readonly Dictionary<string, IDictionary<string, AgentReport>> _analystSignalsInternal = new Dictionary<string, IDictionary<string, AgentReport>>();
