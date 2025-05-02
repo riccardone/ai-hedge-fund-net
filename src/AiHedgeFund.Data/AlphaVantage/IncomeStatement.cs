@@ -12,7 +12,6 @@ public class IncomeStatementReport
     public DateTime FiscalDateEnding { get; set; }
     public string ReportedCurrency { get; set; }
     public decimal? NetIncome { get; set; }
-    public decimal? EarningsPerShare { get; set; }
     public decimal? TotalRevenue { get; set; }
     public decimal? GrossProfit { get; set; }
     public decimal? OperatingIncome { get; set; }
@@ -33,7 +32,6 @@ public class IncomeStatementReport
         return new Dictionary<string, decimal?>
         {
             ["NetIncome"] = NetIncome,
-            ["EarningsPerShare"] = EarningsPerShare,
             ["TotalRevenue"] = TotalRevenue,
             ["GrossProfit"] = GrossProfit,
             ["OperatingIncome"] = OperatingIncome,

@@ -26,7 +26,6 @@ public static class FinancialMetricsFactory
             DepreciationAndAmortization = depreciation,
             MarketCap = marketCap,
             OutstandingShares = outstandingShares ?? 10000m,
-            TotalRevenue = operatingCashFlow + 10000m, // mock revenue
             OperatingMargin = 0.30m,
             ReturnOnEquity = 0.25m,
             CurrentRatio = 1.5m,

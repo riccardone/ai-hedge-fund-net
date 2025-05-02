@@ -12,7 +12,7 @@ namespace AiHedgeFund.Agents;
 /// 3. Discount to intrinsic value (e.g., Graham Number or net-net).
 /// 4. Adequate margin of safety.
 /// </summary>
-public class BenGrahamAgent
+public class BenGrahamAgent 
 {
     private readonly IHttpLib _httpLib;
     private readonly ILogger<BenGrahamAgent> _logger; 
@@ -61,6 +61,7 @@ public class BenGrahamAgent
 
         var epsValues = metrics
             .Where(m => m.EarningsPerShare.HasValue)
+            .OrderBy(m => m.EndDate)
             .Select(m => m.EarningsPerShare.Value)
             .ToList();
 
@@ -70,8 +71,7 @@ public class BenGrahamAgent
             return result;
         }
 
-        double growthThreshold = 0.70;
-
+        // EPS positivity check
         int positiveYears = epsValues.Count(e => e > 0);
         if (positiveYears == epsValues.Count)
         {
@@ -88,45 +88,28 @@ public class BenGrahamAgent
             result.AddDetail("EPS was negative in multiple periods.");
         }
 
-        int growthPeriods = epsValues
-            .Zip(epsValues.Skip(1), (prev, next) => next > prev ? 1 : 0)
-            .Sum();
+        // Overall EPS growth check
+        var epsGrowth = metrics.ComputeEpsGrowth();
 
-        double growthRatio = (double)growthPeriods / (epsValues.Count - 1);
-
-        if (growthRatio >= growthThreshold)
+        if (epsGrowth.HasValue)
         {
-            result.IncreaseScore(1);
-            result.AddDetail("EPS showed a generally increasing trend.");
-        }
-        else if (epsValues.Last() > epsValues.First())
-        {
-            result.AddDetail("EPS grew overall but with fluctuations.");
-        }
-        else
-        {
-            result.AddDetail("EPS did not grow.");
-        }
-
-        var growthRates = metrics
-            .Where(m => m.EarningsPerShareGrowth.HasValue)
-            .Select(m => m.EarningsPerShareGrowth.Value)
-            .ToList();
-
-        if (growthRates.Count >= 2)
-        {
-            int positiveGrowths = growthRates.Count(g => g > 0);
-            double growthRateRatio = (double)positiveGrowths / growthRates.Count;
-
-            if (growthRateRatio >= growthThreshold)
+            if (epsGrowth > 0.10m)
             {
                 result.IncreaseScore(1);
-                result.AddDetail("EPS growth rate was positive in most periods.");
+                result.AddDetail($"EPS grew consistently over the period: {epsGrowth:P1}");
+            }
+            else if (epsValues.Last() > epsValues.First())
+            {
+                result.AddDetail("EPS grew overall but inconsistently.");
             }
             else
             {
-                result.AddDetail("EPS growth rate was inconsistent.");
+                result.AddDetail("EPS did not grow over the full period.");
             }
+        }
+        else
+        {
+            result.AddDetail("Not enough EPS data to evaluate long-term growth.");
         }
 
         return result;
@@ -187,15 +170,17 @@ public class BenGrahamAgent
             return result;
         }
 
-        var marketCap = metrics.Last().MarketCap;
-        if (marketCap <= 0)
+        var latestMetrics = metrics.OrderByDescending(m => m.EndDate).First();
+        var marketCap = latestMetrics.MarketCap;
+        if (marketCap is null or <= 0)
         {
             result.AddDetail("Market Cap missing.");
             return result;
         }
 
-        if (!latest.Extras.TryGetValue("TotalAssets", out var taObj) ||
-            !latest.Extras.TryGetValue("TotalLiabilities", out var tlObj))
+        var extras = latest.Extras;
+        if (!extras.TryGetValue("TotalAssets", out var taObj) ||
+            !extras.TryGetValue("TotalLiabilities", out var tlObj))
         {
             result.AddDetail("Missing TotalAssets or TotalLiabilities.");
             return result;
@@ -205,20 +190,62 @@ public class BenGrahamAgent
         decimal totalLiabilities = Convert.ToDecimal(tlObj);
         decimal ncav = totalAssets - totalLiabilities;
 
-        if (ncav > marketCap)
+        // === Path 1: NCAV deep value check for small/mid caps ===
+        if (marketCap < 200_000_000_000) // < $200B
         {
-            result.IncreaseScore(4);
-            result.AddDetail("Net-Net: NCAV > Market Cap (classic Graham deep value).");
+            if (ncav > marketCap)
+            {
+                result.IncreaseScore(4);
+                result.AddDetail("Net-Net: NCAV > Market Cap (classic Graham deep value).");
+            }
+            else if (ncav >= marketCap * 0.67m)
+            {
+                result.IncreaseScore(2);
+                result.AddDetail("NCAV >= 2/3 of Market Cap (moderate Graham value).");
+            }
+            else
+            {
+                result.AddDetail($"NCAV (${ncav:N0}) is less than 2/3 of Market Cap (${marketCap:N0}) — no deep value opportunity.");
+            }
+
+            return result;
         }
-        else if (ncav >= marketCap * 0.67m)
+
+        // === Path 2: Graham Number check for large caps ===
+        var ttmEps = metrics.ComputeTtmEps();
+        var bvps = metrics.ComputeBookValuePerShare(); 
+
+        if (ttmEps.HasValue && bvps.HasValue && ttmEps > 0 && bvps > 0)
         {
-            result.IncreaseScore(2);
-            result.AddDetail("NCAV Per Share >= 2/3 of Price Per Share (moderate net-net discount).");
+            _logger.LogDebug("TTM EPS: {eps}, BVPS: {bvps}", ttmEps, bvps);
+
+            var grahamNumber = Convert.ToDecimal(Math.Sqrt(22.5 * (double)ttmEps.Value * (double)bvps.Value));
+
+            if (state.Prices.TryGetValue(ticker, out var prices) && prices.Any())
+            {
+                var price = prices.Last().Close;
+
+                if (price <= grahamNumber)
+                {
+                    result.IncreaseScore(3);
+                    result.AddDetail($"Price (${price:F2}) is below Graham Number (${grahamNumber:F2}) — valuation is attractive.");
+                }
+                else
+                {
+                    result.IncreaseScore(1);
+                    result.AddDetail($"Price (${price:F2}) exceeds Graham Number (${grahamNumber:F2}) — limited margin of safety.");
+                }
+            }
+            else
+            {
+                result.AddDetail("No price data available for Graham Number comparison.");
+            }
         }
         else
         {
-            result.AddDetail($"NCAV (${ncav:N0}) is less than 2/3 of Market Cap (${marketCap:N0}) — no deep value opportunity.");
+            result.AddDetail("Missing or invalid TTM EPS or Book Value Per Share for Graham Number calculation.");
         }
+
 
         return result;
     }

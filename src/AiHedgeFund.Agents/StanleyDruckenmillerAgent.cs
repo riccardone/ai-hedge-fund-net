@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 
 namespace AiHedgeFund.Agents;
 
-public class StanleyDruckenmillerAgent
+public class StanleyDruckenmillerAgent 
 {
     private readonly ILogger<StanleyDruckenmillerAgent> _logger;
     private readonly IHttpLib _httpLib;
@@ -101,10 +101,12 @@ public class StanleyDruckenmillerAgent
 
         // EPS Growth
         var ordered = metrics.OrderBy(m => m.EndDate).ToList();
-        var epsList = ordered.Where(e => e.EarningsPerShareGrowth.HasValue).Select(li => li.EarningsPerShareGrowth).ToList();
+        //var epsList = ordered.Where(e => e.EarningsPerShareGrowth.HasValue).Select(li => li.EarningsPerShareGrowth).ToList();
+        var epsList = ordered.Where(e => e.EarningsPerShare.HasValue).Select(li => li.EarningsPerShare.Value).ToList();
+
         if (epsList.Count() >= 2)
         {
-            var growth = (epsList[0] - epsList[^1]) / Math.Abs(epsList[^1].Value);
+            var growth = (epsList[0] - epsList[^1]) / Math.Abs(epsList[^1]);
             if (growth > 0.30m) { rawScore += 3; details.Add($"Strong EPS growth: {growth:P1}"); }
             else if (growth > 0.15m) { rawScore += 2; details.Add($"Moderate EPS growth: {growth:P1}"); }
             else if (growth > 0.05m) { rawScore += 1; details.Add($"Slight EPS growth: {growth:P1}"); }

@@ -17,21 +17,10 @@ public class TradingWorkflowState
     public RiskLevel RiskLevel { get; set; }
     public List<string> Tickers { get; set; } = new(); 
     public Portfolio Portfolio { get; set; } = new();
-    private readonly Dictionary<string, IDictionary<string, AgentReport>> _analystSignalsInternal = new Dictionary<string, IDictionary<string, AgentReport>>();
-    public ReadOnlyDictionary<string, IDictionary<string, AgentReport>> AnalystSignals => new ReadOnlyDictionary<string, IDictionary<string, AgentReport>>(_analystSignalsInternal);
-
-    public void AddOrUpdateAgentReport<T>(AgentReport agentReport)
-    {
-        if (agentReport?.TradeSignal == null || string.IsNullOrEmpty(agentReport.TradeSignal.Ticker))
-            throw new ArgumentException($"{nameof(agentReport)} or its TradeSignal is null/invalid");
-
-        var agentKey = typeof(T).Name.ToSnakeCase();
-
-        if (!_analystSignalsInternal.ContainsKey(agentKey) || _analystSignalsInternal[agentKey] == null)
-            _analystSignalsInternal[agentKey] = new Dictionary<string, AgentReport>();
-
-        _analystSignalsInternal[agentKey][agentReport.TradeSignal.Ticker] = agentReport;
-    }
+    private readonly Dictionary<string, IDictionary<string, AgentReport>> _analystSignalsInternal = new();
+    public ReadOnlyDictionary<string, IDictionary<string, AgentReport>> AnalystSignals => new(_analystSignalsInternal);
+    public Dictionary<string, TradeDecision?>? TradeDecisions { get; set; }
+    public Dictionary<string, RiskAssessment> RiskAssessments { get; set; } = new();
 
     public void AddOrUpdateAgentReport<T>(TradeSignal tradeSignal, IEnumerable<FinancialAnalysisResult> financialAnalysisResults)
     {
@@ -43,8 +32,18 @@ public class TradingWorkflowState
         AddOrUpdateAgentReport<T>(agentReport);
     }
 
-    public Dictionary<string, TradeDecision?>? TradeDecisions { get; set; }
-    public Dictionary<string, Dictionary<string, RiskAssessment>> RiskAssessments { get; set; } = new();
+    private void AddOrUpdateAgentReport<T>(AgentReport agentReport)
+    {
+        if (agentReport?.TradeSignal == null || string.IsNullOrEmpty(agentReport.TradeSignal.Ticker))
+            throw new ArgumentException($"{nameof(agentReport)} or its TradeSignal is null/invalid");
+
+        var agentKey = typeof(T).Name.ToSnakeCase();
+
+        if (!_analystSignalsInternal.ContainsKey(agentKey) || _analystSignalsInternal[agentKey] == null)
+            _analystSignalsInternal[agentKey] = new Dictionary<string, AgentReport>();
+
+        _analystSignalsInternal[agentKey][agentReport.TradeSignal.Ticker] = agentReport;
+    }
 }
 
 public class Portfolio

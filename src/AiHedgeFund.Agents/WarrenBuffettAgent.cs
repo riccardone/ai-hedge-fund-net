@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 
 namespace AiHedgeFund.Agents;
 
-public class WarrenBuffettAgent
+public class WarrenBuffettAgent 
 {
     private readonly ILogger<WarrenBuffettAgent> _logger;
     private readonly IHttpLib _httpLib;

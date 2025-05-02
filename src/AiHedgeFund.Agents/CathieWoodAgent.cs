@@ -12,7 +12,7 @@ namespace AiHedgeFund.Agents;
 /// 3. Invests mostly in AI, robotics, genomic sequencing, fintech, and blockchain.
 /// 4. Willing to endure short-term volatility for long-term gains.
 /// </summary>
-public class CathieWoodAgent
+public class CathieWoodAgent 
 {
     private readonly ILogger<CathieWoodAgent> _logger;
     private readonly IHttpLib _httpLib;
@@ -70,6 +70,7 @@ public class CathieWoodAgent
         var details = new List<string>();
         var ordered = metrics.OrderBy(m => m.EndDate).ToList();
 
+        // 1. Revenue Growth Trend (from FinancialMetrics)
         var revenueGrowths = ordered.Select(m => m.RevenueGrowth).Where(x => x.HasValue).Select(x => x.Value).ToList();
         if (revenueGrowths.Count >= 2)
         {
@@ -82,8 +83,11 @@ public class CathieWoodAgent
             else if (latest > 0.10m) { score += 1; details.Add($"Moderate revenue growth: {latest:P1}"); }
         }
         else
+        {
             details.Add("Insufficient revenue growth data");
+        }
 
+        // 2. Gross Margin Trend
         var margins = ordered.Select(m => m.GrossMargin).Where(x => x.HasValue).Select(x => x.Value).ToList();
         if (margins.Count >= 2)
         {
@@ -94,10 +98,13 @@ public class CathieWoodAgent
             if (margins[^1] > 0.50m) { score += 2; details.Add($"High gross margin: {margins[^1]:P1}"); }
         }
         else
+        {
             details.Add("Insufficient gross margin data");
+        }
 
+        // 3. Operating Leverage
         var opMargins = ordered.Select(m => m.OperatingMargin).Where(x => x.HasValue).Select(x => x.Value).ToList();
-        var revenues = ordered.Select(m => m.RevenueGrowth).Where(x => x.HasValue).Select(x => x.Value).ToList();
+        var revenues = revenueGrowths; // already filtered above
         if (opMargins.Count >= 2 && revenues.Count >= 2)
         {
             var revGrowth = revenues[^1] - revenues[0];
@@ -105,12 +112,19 @@ public class CathieWoodAgent
             if (revGrowth > opGrowth) { score += 2; details.Add("Positive operating leverage: Revenue growth exceeds op margin growth"); }
         }
 
+        // 4. R&D intensity relative to latest revenue
         var rAndDs = lineItems?
             .Where(li => li?.Extras != null)
             .SelectMany(li => li.Extras.TryGetValue("ResearchAndDevelopment", out var r) && r is decimal d ? new[] { d } : Array.Empty<decimal>())
             .ToList() ?? new List<decimal>();
 
-        var latestRevenue = ordered.LastOrDefault()?.TotalRevenue;
+        // Extract latest revenue from the most recent line item
+        var latestRevenue = lineItems?
+            .OrderByDescending(li => li.ReportPeriod)
+            .FirstOrDefault(x => x.Extras.TryGetValue("TotalRevenue", out var val) && val is decimal) is { } recentItem
+            ? (decimal?)recentItem.Extras["TotalRevenue"]
+            : null;
+
         if (rAndDs.Count >= 2 && latestRevenue.HasValue && latestRevenue.Value < 10_000_000) // $10M
         {
             var rAndDTrend = rAndDs[^1] - rAndDs[0];

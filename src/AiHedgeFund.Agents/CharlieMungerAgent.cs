@@ -9,7 +9,7 @@ namespace AiHedgeFund.Agents;
 /// Analyzes stocks using Charlie Munger's investing principles and mental models.
 /// Focuses on moat strength, management quality, predictability, and valuation.
 /// </summary>
-public class CharlieMungerAgent
+public class CharlieMungerAgent 
 {
     private readonly ILogger<CharlieMungerAgent> _logger;
     private readonly IHttpLib _httpLib;
@@ -100,7 +100,11 @@ public class CharlieMungerAgent
         }
 
         // 1. Revenue stability and growth
-        var revenues = ordered.Where(x => x.TotalRevenue.HasValue).Select(m => m.TotalRevenue).ToList();
+        var revenues = lineItems?
+            .Where(li => li.Extras.TryGetValue("TotalRevenue", out var val) && val is decimal)
+            .OrderBy(li => li.ReportPeriod)
+            .Select(li => (decimal)li.Extras["TotalRevenue"])
+            .ToList() ?? new List<decimal>();
 
         if (revenues.Count >= 5)
         {
@@ -108,7 +112,7 @@ public class CharlieMungerAgent
             for (int i = 0; i < revenues.Count - 1; i++)
             {
                 if (revenues[i + 1] == 0) continue;
-                growthRates.Add(revenues[i].Value / revenues[i + 1].Value - 1);
+                growthRates.Add(revenues[i] / revenues[i + 1] - 1);
             }
 
             if (growthRates.Count > 0)

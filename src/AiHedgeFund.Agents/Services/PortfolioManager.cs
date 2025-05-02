@@ -17,22 +17,23 @@ public class PortfolioManager
 
     public void Evaluate(string agentName, TradingWorkflowState state)
     {
-        if (_agentRegistry.TryGet<AgentReport>(agentName, out var agentFunc))
-            agentFunc(state);
-        else
+        if (!_agentRegistry.TryGet<AgentReport>(agentName, out var agentFunc))
             _logger.LogWarning("Agent not found or type mismatch");
+        agentFunc(state);
     }
 
     public void RunRiskAssessments(string agentName, TradingWorkflowState state, RiskManagerAgent riskAgent)
     {
-        var results = riskAgent.Run(state);
+        riskAgent.Run(state);
 
-        if (!state.RiskAssessments.ContainsKey(agentName))
-            state.RiskAssessments[agentName] = new Dictionary<string, RiskAssessment>();
+        // TODO
 
-        foreach (var kvp in results)
-        {
-            state.RiskAssessments[agentName][kvp.Key] = kvp.Value;
-        }
+        //if (!state.RiskAssessments.ContainsKey(agentName))
+        //    state.RiskAssessments[agentName] = new Dictionary<string, RiskAssessment>();
+
+        //foreach (var kvp in state.RiskAssesments)
+        //{
+        //    // TODO
+        //}
     }
 }

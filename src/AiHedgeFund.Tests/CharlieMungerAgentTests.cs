@@ -16,7 +16,7 @@ namespace AiHedgeFund.Tests
         {
             _lineItems = new List<FinancialLineItem>
             {
-                new("AAPL", "2024", "Annual", "USD", new Dictionary<string, dynamic>
+                new("AAPL", new DateTime(2024, 12, 31), "Annual", "USD", new Dictionary<string, dynamic>
                 {
                     ["return_on_invested_capital"] = 0.18m,
                     ["gross_margin"] = 0.42m,
@@ -25,7 +25,7 @@ namespace AiHedgeFund.Tests
                     ["research_and_development"] = 2000m,
                     ["goodwill_and_intangible_assets"] = 3000m,
                 }),
-                new("AAPL", "2023", "Annual", "USD", new Dictionary<string, dynamic>
+                new("AAPL", new DateTime(2023, 12, 31), "Annual", "USD", new Dictionary<string, dynamic>
                 {
                     ["return_on_invested_capital"] = 0.16m,
                     ["gross_margin"] = 0.40m,
@@ -34,7 +34,7 @@ namespace AiHedgeFund.Tests
                     ["research_and_development"] = 1800m,
                     ["goodwill_and_intangible_assets"] = 2800m,
                 }),
-                new("AAPL", "2022", "Annual", "USD", new Dictionary<string, dynamic>
+                new("AAPL", new DateTime(2022, 12, 31), "Annual", "USD", new Dictionary<string, dynamic>
                 {
                     ["return_on_invested_capital"] = 0.14m,
                     ["gross_margin"] = 0.38m,

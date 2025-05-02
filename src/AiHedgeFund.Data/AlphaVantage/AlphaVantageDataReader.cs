@@ -128,7 +128,6 @@ public class AlphaVantageDataReader : IDataReader
                     tmpMetrics.PriceToBookRatio = overviewData.PriceToBookRatio;
                     tmpMetrics.ReturnOnEquity = overviewData.ReturnOnEquityTTM;
                     tmpMetrics.ReturnOnAssets = overviewData.ReturnOnAssetsTTM;
-                    tmpMetrics.EarningsPerShare = overviewData.EPS;
                     tmpMetrics.RevenueGrowth = overviewData.QuarterlyRevenueGrowthYOY;
                     tmpMetrics.OutstandingShares = overviewData.SharesOutstanding;
                     tmpMetrics.Industry = overviewData.Industry;
@@ -156,10 +155,10 @@ public class AlphaVantageDataReader : IDataReader
                 if (i < incomeReports.Count)
                 {
                     var inc = incomeReports[i];
+                    //tmpMetrics.EarningsPerShare = incomeReports[i].EarningsPerShare;
                     tmpMetrics.NetMargin = inc.NetIncome / inc.TotalRevenue;
                     tmpMetrics.OperatingIncomeGrowth = inc.OperatingIncome / inc.TotalRevenue;
                     tmpMetrics.GrossMargin = incomeReports[i].GrossMargin;
-                    tmpMetrics.TotalRevenue = inc.TotalRevenue;
                     tmpMetrics.OperatingMargin = inc.OperatingMargin;
                     if (TryCalculateRoic(inc, balanceReports[i], overviewData, out var roic))
                         tmpMetrics.ReturnOnInvestedCapital = roic;
@@ -184,7 +183,7 @@ public class AlphaVantageDataReader : IDataReader
                 if (i < earningsReports.Count)
                 {
                     var er = earningsReports[i];
-                    tmpMetrics.EarningsPerShareGrowth = er.ReportedEPS;
+                    tmpMetrics.EarningsPerShare = er.ReportedEPS; // likely quarterly EPS
                 }
 
                 tmpMetrics.Period = period;
@@ -381,7 +380,7 @@ public class AlphaVantageDataReader : IDataReader
 
             internalResults.Add(new FinancialLineItem(
                 ticker: ticker,
-                reportPeriod: fiscalDate.ToString("yyyy-MM-dd"),
+                reportPeriod: fiscalDate,
                 period: period,
                 currency: "USD",
                 extras: extras

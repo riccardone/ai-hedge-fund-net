@@ -9,7 +9,7 @@ namespace AiHedgeFund.Agents;
 /// Analyzes stocks using Bill Ackman's investing principles and LLM reasoning.
 /// Fetches multiple periods of data so we can analyze long-term trends.
 /// </summary>
-public class BillAckmanAgent
+public class BillAckmanAgent 
 {
     private readonly ILogger<BillAckmanAgent> _logger;
     private readonly IHttpLib _httpLib;
@@ -76,34 +76,25 @@ public class BillAckmanAgent
         var ordered = metrics.OrderBy(m => m.EndDate).ToList();
 
         // Revenue growth
-        var revenues = ordered.Where(m => m.TotalRevenue.HasValue).Select(li => li.TotalRevenue).ToList();
+        var growthRate = lineItems.RevenueGrowth();
 
-        if (revenues.Count >= 2)
+        if (!growthRate.HasValue)
         {
-            var initial = revenues[0];
-            var final = revenues[^1];
-            if (final > initial)
-            {
-                var growthRate = (final - initial) / Math.Abs(initial.Value);
-                if (growthRate > 0.5m)
-                {
-                    result.IncreaseScore(2);
-                    result.AddDetail($"Revenue grew by {growthRate:P1} over the period.");
-                }
-                else
-                {
-                    result.IncreaseScore(1);
-                    result.AddDetail($"Revenue grew by {growthRate:P1} over the period.");
-                }
-            }
-            else
-            {
-                result.AddDetail("Revenue did not grow significantly.");
-            }
+            result.AddDetail("Not enough revenue data.");
+        }
+        else if (growthRate > 0.5m)
+        {
+            result.IncreaseScore(2);
+            result.AddDetail($"Revenue grew by {growthRate:P1} over the period.");
+        }
+        else if (growthRate > 0)
+        {
+            result.IncreaseScore(1);
+            result.AddDetail($"Revenue grew by {growthRate:P1} over the period.");
         }
         else
         {
-            result.AddDetail("Not enough revenue data.");
+            result.AddDetail("Revenue did not grow significantly.");
         }
 
         // Operating margin

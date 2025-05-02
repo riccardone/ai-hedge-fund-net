@@ -48,11 +48,6 @@ public static class IncomeStatementMapper
                     report.NetIncome = parsedValue;
                     break;
 
-                case "eps":
-                case "earningspershare":
-                    report.EarningsPerShare = parsedValue;
-                    break;
-
                 case "totalrevenue":
                     report.TotalRevenue = parsedValue;
                     break;

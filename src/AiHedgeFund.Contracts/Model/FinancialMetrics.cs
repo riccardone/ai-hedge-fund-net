@@ -1,7 +1,10 @@
-﻿using System.Runtime.InteropServices.ComTypes;
+﻿namespace AiHedgeFund.Contracts.Model;
 
-namespace AiHedgeFund.Contracts.Model;
-
+/// <summary>
+/// FinancialMetrics is typically precomputed and may come from processed datasets
+/// this should be used for snapshot-based valuation or ratio comparisons
+/// Keep financial metrics focused on derived fields (ratios, margins, aggregates). This avoids confusion
+/// </summary>
 public class FinancialMetrics
 {
     public string Ticker { get; set; }
@@ -41,7 +44,6 @@ public class FinancialMetrics
     public decimal? RevenueGrowth { get; set; }
     public decimal? EarningsGrowth { get; set; }
     public decimal? BookValueGrowth { get; set; }
-    public decimal? EarningsPerShareGrowth { get; set; }
     public decimal? FreeCashFlowGrowth { get; set; }
     public decimal? OperatingIncomeGrowth { get; set; }
     public decimal? EbitdaGrowth { get; set; }
@@ -50,7 +52,6 @@ public class FinancialMetrics
     public decimal? BookValuePerShare { get; set; }
     public decimal? FreeCashFlowPerShare { get; set; }
     public decimal? OperatingCashFlow { get; set; }
-    public decimal? TotalRevenue { get; set; }
     public decimal? CapitalExpenditure { get; set; }
     public decimal DividendsAndOtherCashDistributions { get; set; }
     public decimal? FreeCashFlow => OperatingCashFlow - CapitalExpenditure;

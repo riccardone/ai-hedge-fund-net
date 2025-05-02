@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 
 namespace AiHedgeFund.Agents;
 
-public class RiskManagerAgent
+public class RiskManagerAgent 
 {
     private readonly ILogger<RiskManagerAgent> _logger;
 
@@ -12,7 +12,7 @@ public class RiskManagerAgent
         _logger = logger;
     }
 
-    public Dictionary<string, RiskAssessment> Run(TradingWorkflowState state)
+    public void Run(TradingWorkflowState state)
     {
         var results = new Dictionary<string, RiskAssessment>();
         var portfolio = state.Portfolio;
@@ -53,13 +53,8 @@ public class RiskManagerAgent
             };
 
             results[ticker] = assessment;
-
-            //if (state.ShowReasoning)
-            //{
-            //    Logger.Info($"[Risk] {ticker}: pos={costBasis}, limit={positionLimit}, remaining={remainingLimit}, cash={portfolio.Cash}");
-            //}
         }
 
-        return results;
+        state.RiskAssessments = results;
     }
 }
