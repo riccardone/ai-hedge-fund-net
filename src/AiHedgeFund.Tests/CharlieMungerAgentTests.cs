@@ -56,9 +56,7 @@ namespace AiHedgeFund.Tests
                 FinancialMetrics = new Dictionary<string, IEnumerable<FinancialMetrics>> { { "AAPL", metrics } },
                 Portfolio = new Portfolio(),
                 Tickers = new List<string> { "AAPL" },
-                FinancialLineItems = new Dictionary<string, IEnumerable<FinancialLineItem>> { { "AAPL", _lineItems } },
-                //InitialCash = 100000,
-                TradeDecisions = new Dictionary<string, TradeDecision?>()
+                FinancialLineItems = new Dictionary<string, IEnumerable<FinancialLineItem>> { { "AAPL", _lineItems } }
             };
         }
 

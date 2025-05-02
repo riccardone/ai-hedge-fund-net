@@ -26,7 +26,7 @@ public class MainApp : IHostedService
             _portfolio.Evaluate(agent, state);
         }
 
-        _portfolio.RunRiskAssessments("risk_management_agent", state, _riskAgent);
+        _portfolio.RunRiskAssessments(state, _riskAgent);
 
         foreach (var kvp in state.AnalystSignals)
         {

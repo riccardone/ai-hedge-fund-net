@@ -22,18 +22,29 @@ public class PortfolioManager
         agentFunc(state);
     }
 
-    public void RunRiskAssessments(string agentName, TradingWorkflowState state, RiskManagerAgent riskAgent)
+    public void RunRiskAssessments(TradingWorkflowState state, RiskManagerAgent riskAgent)
     {
         riskAgent.Run(state);
 
-        // TODO
+        foreach (var agentEntry in state.AnalystSignals)
+        {
+            foreach (var tickerEntry in agentEntry.Value)
+            {
+                var agentReport = tickerEntry.Value;
+                var tradeSignal = agentReport?.TradeSignal;
 
-        //if (!state.RiskAssessments.ContainsKey(agentName))
-        //    state.RiskAssessments[agentName] = new Dictionary<string, RiskAssessment>();
+                if (tradeSignal == null)
+                    continue;
 
-        //foreach (var kvp in state.RiskAssesments)
-        //{
-        //    // TODO
-        //}
+                if (state.RiskAssessments.TryGetValue(tradeSignal.Ticker, out var risk))
+                {
+                    tradeSignal.SetRiskAssessment(risk);
+                }
+                else
+                {
+                    _logger.LogWarning($"No risk assessment found for ticker {tradeSignal.Ticker}");
+                }
+            }
+        }
     }
 }

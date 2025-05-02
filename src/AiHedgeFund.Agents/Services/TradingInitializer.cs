@@ -25,8 +25,7 @@ public class TradingInitializer
             SelectedAnalysts = _args.AgentNames,
             RiskLevel = _args.RiskLevel,
             StartDate = _args.StartDate,
-            EndDate = _args.EndDate,
-            TradeDecisions = new Dictionary<string, TradeDecision?>()
+            EndDate = _args.EndDate
         };
 
         foreach (var ticker in state.Tickers)

@@ -34,7 +34,7 @@ public static class ConsoleOutputFormatter
             AnsiConsole.MarkupLine($"Signal    : {Colorize(report.TradeSignal.Signal, "white")} (Confidence: {report.TradeSignal.Confidence})");
             AnsiConsole.MarkupLine($"Reasoning : {Colorize(report.TradeSignal.Reasoning, "white")}");
             AnsiConsole.WriteLine();
-
+            
             if (report.FinancialAnalysisResults != null && report.FinancialAnalysisResults.Any())
             {
                 AnsiConsole.MarkupLine($">> {Colorize("Financial Analysis Results:", "yellow")}");

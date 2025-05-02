@@ -19,7 +19,6 @@ public class TradingWorkflowState
     public Portfolio Portfolio { get; set; } = new();
     private readonly Dictionary<string, IDictionary<string, AgentReport>> _analystSignalsInternal = new();
     public ReadOnlyDictionary<string, IDictionary<string, AgentReport>> AnalystSignals => new(_analystSignalsInternal);
-    public Dictionary<string, TradeDecision?>? TradeDecisions { get; set; }
     public Dictionary<string, RiskAssessment> RiskAssessments { get; set; } = new();
 
     public void AddOrUpdateAgentReport<T>(TradeSignal tradeSignal, IEnumerable<FinancialAnalysisResult> financialAnalysisResults)

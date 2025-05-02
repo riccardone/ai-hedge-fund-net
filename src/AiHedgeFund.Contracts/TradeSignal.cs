@@ -17,10 +17,16 @@ public class TradeSignal
         Ticker = ticker;
     }
 
+    public void SetRiskAssessment(RiskAssessment riskAssessment)
+    {
+        RiskAssessment = riskAssessment;
+    }
+
     public string Ticker { get; set; }
     public string Signal { get; set; }
     public decimal Confidence { get; set; }
     public string Reasoning { get; set; }
+    public RiskAssessment RiskAssessment { get; private set; }
 
     public override string ToString()
     {
