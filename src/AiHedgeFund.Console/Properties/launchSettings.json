@@ -2,7 +2,7 @@
   "profiles": {
     "AiHedgeFund.Console": {
       "commandName": "Project",
-      "commandLineArgs": "--agent ben_graham --tickers NVDA --risk-level medium"
+      "commandLineArgs": "--agent stanley_druckenmiller cathie_wood ben_graham --tickers NVDA --risk-level medium"
     },
     "Container (Dockerfile)": {
       "commandName": "Docker"

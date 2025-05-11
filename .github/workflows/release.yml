@@ -1,4 +1,4 @@
-name: Build, Test, and Release
+name: Build, Test, and Publish NuGet Packages
 
 on:
   push:
@@ -6,17 +6,16 @@ on:
       - 'v*'  # Trigger on version tags like v1.0.0
 
 jobs:
-  build-test-release:
+  build-test-publish:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          path: .
-          fetch-depth: 0  # Enables changelog generation from commit history
+          fetch-depth: 0
 
       - name: Setup .NET 9
         uses: actions/setup-dotnet@v3
@@ -26,20 +25,15 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore src/AiHedgeFund.sln
 
-      - name: Build solution
-        run: dotnet build src/AiHedgeFund.sln --configuration Release --no-restore
+      - name: Build projects and generate NuGet packages
+        run: dotnet build src/AiHedgeFund.sln -c Release --no-restore
 
-      # - name: Show contents of bin folder
-      #   run: ls -R src/AiHedgeFund.Tests/bin
-
-      # - name: Run tests
-      #   run: dotnet test src/AiHedgeFund.Tests/AiHedgeFund.Tests.csproj --no-build --verbosity normal
-
-      - name: Publish console app
-        run: dotnet publish src/AiHedgeFund.Console/AiHedgeFund.Console.csproj -c Release -o out
-
-      - name: Archive release output
-        run: zip -r release-artifacts.zip out
+      - name: Push NuGet packages
+        run: |
+          dotnet nuget push **/bin/Release/*.nupkg \
+            --api-key ${{ secrets.NUGET_API_KEY }} \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
 
       - name: Generate release notes
         id: changelog
@@ -52,11 +46,11 @@ jobs:
             git log --pretty=format:"- \`%s\` ([%h](${REPO_URL}/commit/%H))" $(git describe --tags --abbrev=0)^..HEAD
             echo ""
             echo "EOF"
-          } >> "$GITHUB_OUTPUT"        
+          } >> "$GITHUB_OUTPUT"
 
-      - name: Upload release artifacts
+      - name: Upload GitHub release
         uses: softprops/action-gh-release@v1
         with:
-          files: release-artifacts.zip
+          body: ${{ steps.changelog.outputs.changelog }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

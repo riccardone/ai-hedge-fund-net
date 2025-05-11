@@ -32,6 +32,7 @@ public class MainApp : IHostedService
         {
             ConsoleOutputFormatter.PrintAgentReport(
                 kvp.Key,
+                state.ModelProvider,
                 state.ModelName,
                 state.RiskLevel.ToString(),
                 state.StartDate,

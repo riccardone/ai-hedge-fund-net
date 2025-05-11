@@ -6,7 +6,7 @@ namespace AiHedgeFund.Console;
 
 public static class ConsoleOutputFormatter
 {
-    public static void PrintAgentReport(string agentKey, string modelName, string riskLevel, DateTime start, DateTime end, List<AgentReport> reports)
+    public static void PrintAgentReport(string agentKey, string aiProvider, string modelName, string riskLevel, DateTime start, DateTime end, List<AgentReport> reports)
     {
         string Colorize(string text, string color)
         {
@@ -23,7 +23,7 @@ public static class ConsoleOutputFormatter
         AnsiConsole.MarkupLine($"{Colorize("==== ANALYSIS REPORT", "bold gray")} =================================================");
         AnsiConsole.MarkupLine($"Analyst: {Colorize(displayName, "cyan")}");
         AnsiConsole.MarkupLine($"Date Range: {Colorize(start.ToString("dd/MM/yyyy"), "cyan")} - {Colorize(end.ToString("dd/MM/yyyy"), "cyan")}");
-        AnsiConsole.MarkupLine($"Model: {Colorize(modelName, "cyan")} | Risk Level: {Colorize(riskLevel, "cyan")}");
+        AnsiConsole.MarkupLine($"Model: {Colorize(aiProvider, "cyan")} {Colorize(modelName, "cyan")} | Risk Level: {Colorize(riskLevel, "cyan")}");
         AnsiConsole.MarkupLine($"{Colorize("======================================================================", "gray")}");
 
         foreach (var report in reports)

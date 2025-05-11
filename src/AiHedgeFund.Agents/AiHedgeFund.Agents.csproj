@@ -1,17 +1,31 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<PackageId>AiHedgeFund.Agents</PackageId>
+		<Version>0.2.3</Version>
+		<Authors>YourName or Organization</Authors>
+		<Company>YourCompany</Company>
+		<Description>Trading AI agents implementing investment philosophies (Buffett, Wood, etc.) for strategic signal generation.</Description>
+		<PackageTags>trading;ai;agents;investment;nuget</PackageTags>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageProjectUrl>https://github.com/riccardone/ai-hedge-fund-net</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/riccardone/ai-hedge-fund-net</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<RepositoryBranch>main</RepositoryBranch>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<PackageOutputPath>$(SolutionDir)artifacts\nuget</PackageOutputPath>
+	</PropertyGroup>
 
-  <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.4" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.3" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\AiHedgeFund.Contracts\AiHedgeFund.Contracts.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\AiHedgeFund.Contracts\AiHedgeFund.Contracts.csproj" />
+	</ItemGroup>
 
 </Project>
