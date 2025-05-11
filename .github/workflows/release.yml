@@ -42,6 +42,24 @@ jobs:
             --api-key ${{ secrets.NUGET_API_KEY }} \
             --source https://api.nuget.org/v3/index.json \
             --skip-duplicate
+      
+      - name: Publish for Linux (linux-x64)
+        run: dotnet publish src/AiHedgeFund.Console/AiHedgeFund.Console.csproj -c Release -r linux-x64 --self-contained true -o out-linux
+
+      - name: Publish for Windows (win-x64)
+        run: dotnet publish src/AiHedgeFund.Console/AiHedgeFund.Console.csproj -c Release -r win-x64 --self-contained true -o out-win
+
+      - name: Publish for macOS ARM (osx-arm64)
+        run: dotnet publish src/AiHedgeFund.Console/AiHedgeFund.Console.csproj -c Release -r osx-arm64 --self-contained true -o out-macos
+      
+      - name: Archive Linux build
+        run: zip -r aihedgefund-console-linux-x64.zip out-linux
+
+      - name: Archive Windows build
+        run: zip -r aihedgefund-console-win-x64.zip out-win
+
+      - name: Archive macOS build
+        run: zip -r aihedgefund-console-osx-arm64.zip out-macos
 
       - name: Generate release notes
         id: changelog
@@ -60,5 +78,9 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           body: ${{ steps.changelog.outputs.changelog }}
+          files: |
+            aihedgefund-console-linux-x64.zip
+            aihedgefund-console-win-x64.zip
+            aihedgefund-console-osx-arm64.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
