@@ -5,7 +5,7 @@
 		<Nullable>enable</Nullable>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<PackageId>AiHedgeFund.Agents</PackageId>
-		<Version>0.2.5</Version>
+		<Version>0.2.6</Version>
 		<Authors>YourName or Organization</Authors>
 		<Company>YourCompany</Company>
 		<Description>Trading AI agents implementing investment philosophies (Buffett, Wood, etc.) for strategic signal generation.</Description>
