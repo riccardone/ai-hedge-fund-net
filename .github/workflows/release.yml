@@ -25,10 +25,13 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore src/AiHedgeFund.sln
 
-      - name: Build and pack NuGet packages
+      - name: Build solution
+        run: dotnet build src/AiHedgeFund.sln -c Release --no-restore
+
+      - name: Pack NuGet packages
         run: |
-          dotnet pack src/AiHedgeFund.Contracts/AiHedgeFund.Contracts.csproj -c Release --no-restore --output ./nupkgs
-          dotnet pack src/AiHedgeFund.Agents/AiHedgeFund.Agents.csproj -c Release --no-restore --output ./nupkgs
+          dotnet pack src/AiHedgeFund.Contracts/AiHedgeFund.Contracts.csproj -c Release --no-build --output ./nupkgs
+          dotnet pack src/AiHedgeFund.Agents/AiHedgeFund.Agents.csproj -c Release --no-build --output ./nupkgs
 
       - name: Show packaged files
         run: ls -lh ./nupkgs
