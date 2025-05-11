@@ -32,6 +32,7 @@ jobs:
         run: |
           dotnet pack src/AiHedgeFund.Contracts/AiHedgeFund.Contracts.csproj -c Release --no-build --output ./nupkgs
           dotnet pack src/AiHedgeFund.Agents/AiHedgeFund.Agents.csproj -c Release --no-build --output ./nupkgs
+          dotnet pack src/AiHedgeFund.Data/AiHedgeFund.Data.csproj -c Release --no-build --output ./nupkgs
 
       - name: Show packaged files
         run: ls -lh ./nupkgs
