@@ -28,24 +28,21 @@ jobs:
       - name: Build solution
         run: dotnet build src/AiHedgeFund.sln -c Release --no-restore
 
-      - name: Pack Contracts
-        run: dotnet pack src/AiHedgeFund.Contracts/AiHedgeFund.Contracts.csproj -c Release --no-build --output ./nupkgs
-
-      - name: Pack Agents
-        run: dotnet pack src/AiHedgeFund.Agents/AiHedgeFund.Agents.csproj -c Release --no-build --output ./nupkgs
-
-      - name: Pack Data
-        run: dotnet pack src/AiHedgeFund.Data/AiHedgeFund.Data.csproj -c Release --no-build --output ./nupkgs
+      - name: Pack NuGet packages
+        run: |
+          dotnet pack src/AiHedgeFund.Contracts/AiHedgeFund.Contracts.csproj -c Release --no-build --output ./nupkgs/contracts
+          dotnet pack src/AiHedgeFund.Agents/AiHedgeFund.Agents.csproj -c Release --no-build --output ./nupkgs/agents
+          dotnet pack src/AiHedgeFund.Data/AiHedgeFund.Data.csproj -c Release --no-build --output ./nupkgs/data
 
       - name: Show packaged files
         run: ls -lh ./nupkgs
 
       - name: Push NuGet packages
         run: |
-          dotnet nuget push ./nupkgs/*.nupkg \
+          find ./nupkgs -name "*.nupkg" -exec dotnet nuget push {} \
             --api-key ${{ secrets.NUGET_API_KEY }} \
             --source https://api.nuget.org/v3/index.json \
-            --skip-duplicate
+            --skip-duplicate \;
       
       - name: Publish for Linux (linux-x64)
         run: dotnet publish src/AiHedgeFund.Console/AiHedgeFund.Console.csproj -c Release -r linux-x64 --self-contained true -o out-linux
