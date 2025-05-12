@@ -37,11 +37,21 @@ jobs:
       - name: Show packaged files
         run: ls -lh ./nupkgs
 
-      - name: Push NuGet packages
+      - name: Push to NuGet.org
         run: |
           find ./nupkgs -name "*.nupkg" -exec dotnet nuget push {} \
             --api-key ${{ secrets.NUGET_API_KEY }} \
             --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate \;
+
+      - name: Push to GitHub Packages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          find ./nupkgs -name "*.nupkg" -exec dotnet nuget push {} \
+            --api-key $GITHUB_TOKEN \
+            --source "https://nuget.pkg.github.com/${OWNER}/index.json" \
             --skip-duplicate \;
       
       - name: Publish for Linux (linux-x64)
