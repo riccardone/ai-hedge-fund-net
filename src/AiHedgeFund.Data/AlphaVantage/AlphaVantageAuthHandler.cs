@@ -1,13 +1,9 @@
 ﻿namespace AiHedgeFund.Data.AlphaVantage;
 
-public class AlphaVantageAuthHandler : DelegatingHandler
+public class AlphaVantageAuthHandler(string? apiKey) : DelegatingHandler
 {
-    private readonly string _apiKey;
-
-    public AlphaVantageAuthHandler(string apiKey)
-    {
-        _apiKey = apiKey;
-    }
+    private readonly string _apiKey = apiKey
+                                      ?? throw new ArgumentNullException(nameof(apiKey), "Alpha Vantage API key is required");
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {

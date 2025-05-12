@@ -22,7 +22,7 @@
 	</PropertyGroup>
 	<ItemGroup>
 	  <None Update="README.md">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
 	    <Pack>True</Pack>
 	    <PackagePath>\</PackagePath>
 	  </None>

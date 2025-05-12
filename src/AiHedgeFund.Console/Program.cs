@@ -42,13 +42,15 @@ internal class Program
 
                 var configuration = BuildConfig();
                 services.AddHttpClient();
+                var apiKey = configuration["AlphaVantage:ApiKey"];
+                if (string.IsNullOrWhiteSpace(apiKey))
+                    throw new InvalidOperationException("AlphaVantage API key is missing in configuration.");
+
                 services.AddHttpClient("AlphaVantage", client =>
-                {
-                    var apiKey = configuration["AlphaVantage:ApiKey"];
-                    if (string.IsNullOrEmpty(apiKey))
-                        throw new InvalidOperationException("AlphaVantage API key is missing in configuration.");
-                    client.BaseAddress = new Uri("https://www.alphavantage.co");
-                }).AddHttpMessageHandler(() => new AlphaVantageAuthHandler(configuration["AlphaVantage:ApiKey"]));
+                    {
+                        client.BaseAddress = new Uri("https://www.alphavantage.co");
+                    })
+                    .AddHttpMessageHandler(() => new AlphaVantageAuthHandler(apiKey));
                 services.AddHttpClient("OpenAI", client =>
                 {
                     var apiKey = configuration["OpenAI:ApiKey"];
