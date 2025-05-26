@@ -5,7 +5,7 @@
 		<Nullable>enable</Nullable>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<PackageId>AiHedgeFund.Contracts</PackageId>
-		<Version>0.2.9</Version>
+		<Version>0.2.10</Version>
 		<Authors>Riccardo Di Nuzzo</Authors>
 		<Company>Amarcode Studios Ltd</Company>
 		<Description>Core contract interfaces and data models for AiHedgeFund strategy agents.</Description>
