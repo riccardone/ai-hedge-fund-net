@@ -16,6 +16,11 @@ public class AppArguments
 
     public RiskLevel RiskLevel { get; private set; } = RiskLevel.Medium; // Default value
 
+    public AppArguments()
+    {
+        
+    }
+
     public AppArguments(string[] args)
     {
         if (args.Contains("--help") || args.Contains("-h") || args.Length == 0)
