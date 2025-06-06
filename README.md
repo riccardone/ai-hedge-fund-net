@@ -1,3 +1,5 @@
+[![Build, Test, and Publish NuGet Packages](https://github.com/riccardone/ai-hedge-fund-net/actions/workflows/release.yml/badge.svg)](https://github.com/riccardone/ai-hedge-fund-net/actions/workflows/release.yml)
+
 # ai-hedge-fund-net
 
 **ai-hedge-fund-net** is a .NET alghoritmic program that provides trading signals by analyzing stocks using multiple AI agents. Each agent applies a different investment philosophy to decide whether a stock is a **buy**, **hold**, or **sell**. Agents also provide their **reasoning**, **confidence score**, **key metrics**, and **specific rules** behind each decision.
