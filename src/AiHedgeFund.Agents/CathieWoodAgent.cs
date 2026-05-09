@@ -323,7 +323,8 @@ Rules:
             systemMessage,
             analysisData,
             agentName: "Cathie Wood",
-            out tradeSignal
+            out tradeSignal,
+            model: state.ModelName
         );
     }
 }

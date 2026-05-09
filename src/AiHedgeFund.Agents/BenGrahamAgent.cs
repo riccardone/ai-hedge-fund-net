@@ -42,7 +42,7 @@ public class BenGrahamAgent
             var totalScore = earnings.Score + strength.Score + valuation.Score;
             var maxScore = Math.Max(1, earnings.MaxScore + strength.MaxScore + valuation.MaxScore);
 
-            if (TryGenerateOutput(ticker, totalScore, maxScore, earnings, strength, valuation, out var tradeSignal))
+            if (TryGenerateOutput(ticker, totalScore, maxScore, earnings, strength, valuation, state.ModelName, out var tradeSignal))
                 state.AddOrUpdateAgentReport<BenGrahamAgent>(tradeSignal, new[] { earnings, strength, valuation });
             else
                 _logger.LogError("Error while running {AgentName}", nameof(BenGrahamAgent));
@@ -267,7 +267,7 @@ public class BenGrahamAgent
     }
 
     private bool TryGenerateOutput(string ticker, int totalScore, int maxScore, FinancialAnalysisResult earnings,
-        FinancialAnalysisResult strength, FinancialAnalysisResult valuation, out TradeSignal tradeSignal)
+        FinancialAnalysisResult strength, FinancialAnalysisResult valuation, string model, out TradeSignal tradeSignal)
     {
         if (string.IsNullOrWhiteSpace(ticker))
         {
@@ -300,7 +300,8 @@ public class BenGrahamAgent
             systemMessage,
             analysisData,
             agentName: "Ben Graham",
-            out tradeSignal
+            out tradeSignal,
+            model: model
         );
     }
 }

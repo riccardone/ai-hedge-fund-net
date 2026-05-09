@@ -54,7 +54,7 @@ public class BillAckmanAgent
             var maxScore = Math.Max(1, businessQuality.MaxScore + financialDiscipline.MaxScore + valuation.MaxScore);
 
             if (TryGenerateOutput(ticker, businessQuality, financialDiscipline, valuation, totalScore, maxScore,
-                    out var tradeSignal))
+                    state.ModelName, out var tradeSignal))
                 state.AddOrUpdateAgentReport<BillAckmanAgent>(tradeSignal,
                     new[] { businessQuality, financialDiscipline, valuation });
             else
@@ -338,7 +338,7 @@ public class BillAckmanAgent
 
     private bool TryGenerateOutput(string ticker, FinancialAnalysisResult businessQuality,
         FinancialAnalysisResult financialDiscipline, FinancialAnalysisResult valuation, int totalScore, int maxScore,
-        out TradeSignal tradeSignal)
+        string model, out TradeSignal tradeSignal)
     {
         var systemMessage = """
         You are a Bill Ackman AI agent, making investment decisions using his principles:
@@ -376,7 +376,8 @@ public class BillAckmanAgent
             systemMessage,
             analysisData,
             agentName: "Bill Ackman",
-            out tradeSignal
+            out tradeSignal,
+            model: model
         );
     }
 }

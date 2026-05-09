@@ -87,10 +87,13 @@ CLI args (--agent, --tickers, --risk-level, --start-date, --end-date)
 ## Data Layer
 
 - **AlphaVantage** is the default `IDataReader` implementation.
-- `DataFetcher` provides a two-level cache: file cache (`FileDataManager`, stored in `data/` folder next to the binary) and in-memory `ConcurrentDictionary`. Data is fetched from Alpha Vantage once, serialized to disk, and served from cache on subsequent runs.
-- To force a full data refresh, delete the `data/` folder.
+- `DataFetcher` provides a two-level cache: file cache (`FileDataManager`, stored in `AlphaVantageCache/` folder next to the binary) and in-memory `ConcurrentDictionary`. Data is fetched from Alpha Vantage once, serialized to disk, and served from cache on subsequent runs.
+- To force a full data refresh, delete the `AlphaVantageCache/` folder.
 - `AlphaVantageAuthHandler` injects the API key as a query parameter on every outbound request.
+- `RateLimitingHandler` enforces 1 request/second (Alpha Vantage free-tier limit). It runs as the outermost `DelegatingHandler` in the pipeline.
 - `IPriceVolumeProvider` is a seam for price volume data; currently satisfied by `FakePriceVolumeProvider`.
+- **Alpha Vantage free tier**: 1 request/second and 25 requests/day. Exceeding the daily cap returns a 200 OK with `{"Information": "..."}` in the body — `DataFetcher.TryExtractProviderError` detects these and returns `false` without caching. Stale cached error responses (all-null fields) are caught by the `isRawValid` delegate in `TryLoadOrFetch` and trigger a re-fetch.
+- **Use mock/fake data in tests and for local development** to avoid consuming the 25-request daily quota. The next priority is adding a `FakeDataReader` or file-backed `IDataReader` backed by canned JSON fixtures so the pipeline can run end-to-end without hitting Alpha Vantage.
 - To add a new data provider, implement `IDataReader` and register it in `Program.cs`.
 
 ---
@@ -99,8 +102,8 @@ CLI args (--agent, --tickers, --risk-level, --start-date, --end-date)
 
 - `IHttpLib` / `OpenAiHttp` wraps synchronous HTTP calls to the OpenAI Chat Completions endpoint.
 - `LlmTradeSignalGenerator.TryGenerateSignal(...)` is the single shared utility used by all agents:
-  - Accepts a `systemMessage` (agent persona and rules) and `analysisData` (anonymous object serialised as JSON).
-  - Sends a request to `gpt-4` with `temperature = 0.2`.
+  - Accepts a `systemMessage` (agent persona and rules), `analysisData` (anonymous object serialised as JSON), and `model` (defaults to `"gpt-4o-mini"`).
+  - Default model is `gpt-4o-mini` (Tier 1). `gpt-4` requires Tier 2 ($50+ spend). Pass `--model` CLI arg to override.
   - Parses the JSON response (`signal`, `confidence`, `reasoning`).
   - Returns `false` and a neutral fallback `TradeSignal` on any failure — agents should log errors but continue.
 - Never call the LLM directly in an agent; always go through `LlmTradeSignalGenerator`.
@@ -137,6 +140,7 @@ AiHedgeFund.Console --help
 | `--start-date` | 3 months ago | Price data window start |
 | `--end-date` | Today | Price data window end |
 | `--risk-level` | `medium` | `low`, `medium`, or `high` — affects scoring thresholds and DCF assumptions |
+| `--model` | `gpt-4o-mini` | OpenAI model name; `gpt-4o-mini` works on Tier 1 keys |
 
 ---
 

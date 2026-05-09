@@ -44,7 +44,8 @@ public class StanleyDruckenmillerAgent
 
             var growthMomentum = GrowthAndMomentum(metrics, lineItems, state.Prices[ticker]);
             var riskReward = RiskReward(metrics, lineItems, state.Prices[ticker]);
-            var sentiment = Sentiment(state.CompanyNews[ticker]);
+            var news = state.CompanyNews.TryGetValue(ticker, out var newsList) ? newsList : Enumerable.Empty<NewsSentiment>();
+            var sentiment = Sentiment(news);
             var insiderActivity = AnalyzeInsiderActivity(metrics);
             var valuation = AnalyzeValuation(metrics, lineItems, marketCap);
 
@@ -58,7 +59,7 @@ public class StanleyDruckenmillerAgent
 
             const int maxScore = 10;
 
-            if (TryGenerateOutput(ticker, growthMomentum, riskReward, valuation, sentiment, insiderActivity, totalScore, maxScore, out var tradeSignal))
+            if (TryGenerateOutput(ticker, growthMomentum, riskReward, valuation, sentiment, insiderActivity, totalScore, maxScore, state.ModelName, out var tradeSignal))
                 state.AddOrUpdateAgentReport<StanleyDruckenmillerAgent>(tradeSignal, new []{ growthMomentum, riskReward, sentiment, insiderActivity, valuation });
             else
                 _logger.LogError($"Error while running {nameof(StanleyDruckenmillerAgent)} for {ticker}");
@@ -484,7 +485,7 @@ public class StanleyDruckenmillerAgent
 
     private bool TryGenerateOutput(string ticker, FinancialAnalysisResult growthMomentum,
         FinancialAnalysisResult riskReward, FinancialAnalysisResult valuation, FinancialAnalysisResult sentiment,
-        FinancialAnalysisResult insiderActivity, double totalScore, int maxScore, out TradeSignal tradeSignal)
+        FinancialAnalysisResult insiderActivity, double totalScore, int maxScore, string model, out TradeSignal tradeSignal)
     {
         tradeSignal = default!;
 
@@ -522,7 +523,8 @@ Rules:
             systemMessage: systemMessage,
             analysisData: analysisData,
             agentName: "Stanley Druckenmiller",
-            out tradeSignal
+            out tradeSignal,
+            model: model
         );
     }
 }

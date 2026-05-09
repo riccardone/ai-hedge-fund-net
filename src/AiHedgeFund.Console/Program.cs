@@ -27,6 +27,7 @@ internal class Program
                 services.AddSingleton<IPriceVolumeProvider, FakePriceVolumeProvider>();
                 services.AddSingleton<IHttpLib, OpenAiHttp>();
                 services.AddSingleton<TradingInitializer>();
+                services.AddSingleton<FileDataManager>();
                 services.AddSingleton<DataFetcher>();
                 services.AddSingleton<IAgentRegistry, AgentRegistry>();
                 services.AddSingleton<BenGrahamAgent>();
@@ -50,6 +51,7 @@ internal class Program
                     {
                         client.BaseAddress = new Uri("https://www.alphavantage.co");
                     })
+                    .AddHttpMessageHandler(() => new RateLimitingHandler())
                     .AddHttpMessageHandler(() => new AlphaVantageAuthHandler(apiKey));
                 services.AddHttpClient("OpenAI", client =>
                 {

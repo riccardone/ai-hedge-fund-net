@@ -33,6 +33,15 @@ This is an example of output for NVidia using warren_buffett and cathie_wood age
 > AiHedgeFund.Console --agent cathie_wood ben_graham --tickers MSFT AAPL
 ```
 
+| Flag | Default | Description |
+|---|---|---|
+| `--agent` | _(required)_ | One or more agent names (snake_case) |
+| `--tickers` | _(required)_ | One or more stock symbols |
+| `--start-date` | 3 months ago | Price data window start |
+| `--end-date` | Today | Price data window end |
+| `--risk-level` | `medium` | `low`, `medium`, or `high` |
+| `--model` | `gpt-4o-mini` | OpenAI model (Tier 1 keys support `gpt-4o-mini` and `gpt-4o`) |
+
 ---
 ## Configuration
 

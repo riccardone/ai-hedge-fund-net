@@ -954,7 +954,8 @@ Rules:
             systemMessage,
             analysisData,
             agentName: "Charlie Munger",
-            out tradeSignal
+            out tradeSignal,
+            model: state.ModelName
         );
     }
 }

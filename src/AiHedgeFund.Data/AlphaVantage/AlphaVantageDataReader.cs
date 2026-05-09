@@ -24,7 +24,7 @@ public class AlphaVantageDataReader : IDataReader
         var key = $"daily_{ticker}";
         var query = $"query?function=TIME_SERIES_DAILY&symbol={ticker}&outputsize=compact";
 
-        if (_dataFetcher.TryLoadOrFetch<TimeSeriesDailyResponse, List<Price>>(key, query, raw =>
+        if (!_dataFetcher.TryLoadOrFetch<TimeSeriesDailyResponse, List<Price>>(key, query, raw =>
             {
                 var result = new List<Price>();
 
@@ -49,7 +49,7 @@ public class AlphaVantageDataReader : IDataReader
                 }
 
                 return result.OrderBy(p => p.Date).ToList();
-            }, out var results))
+            }, out var results, isRawValid: raw => raw.TimeSeries.Count > 0))
         {
             prices = results ?? Enumerable.Empty<Price>();
             return true;
@@ -66,7 +66,8 @@ public class AlphaVantageDataReader : IDataReader
         try
         {
             if (!_dataFetcher.TryLoadOrFetch<CompanyOverviewRaw, CompanyOverview>($"OVERVIEW:{ticker}",
-                    $"query?function=OVERVIEW&symbol={ticker}", CompanyOverviewMapper.Map, out var overviewData))
+                    $"query?function=OVERVIEW&symbol={ticker}", CompanyOverviewMapper.Map, out var overviewData,
+                    isRawValid: raw => raw.Symbol != null))
             {
                 _logger.LogError($"I can't retrieve {nameof(overviewData)}");
                 metrics = default;
@@ -74,7 +75,8 @@ public class AlphaVantageDataReader : IDataReader
             }
 
             if (!_dataFetcher.TryLoadOrFetch<BalanceSheetRaw, BalanceSheet>($"BALANCE_SHEET:{ticker}",
-                    $"query?function=BALANCE_SHEET&symbol={ticker}", BalanceSheetMapper.Map, out var balanceSheetData))
+                    $"query?function=BALANCE_SHEET&symbol={ticker}", BalanceSheetMapper.Map, out var balanceSheetData,
+                    isRawValid: raw => raw.Symbol != null))
             {
                 _logger.LogError($"I can't retrieve {nameof(balanceSheetData)}");
                 metrics = default;
@@ -83,7 +85,7 @@ public class AlphaVantageDataReader : IDataReader
 
             if (!_dataFetcher.TryLoadOrFetch<IncomeStatementRaw, IncomeStatement>($"INCOME_STATEMENT:{ticker}",
                     $"query?function=INCOME_STATEMENT&symbol={ticker}", IncomeStatementMapper.Map,
-                    out var incomeStatementData))
+                    out var incomeStatementData, isRawValid: raw => raw.Symbol != null))
             {
                 _logger.LogError($"I can't retrieve {nameof(incomeStatementData)}");
                 metrics = default;
@@ -91,7 +93,8 @@ public class AlphaVantageDataReader : IDataReader
             }
 
             if (!_dataFetcher.TryLoadOrFetch<CashFlowRaw, CashFlow>($"CASH_FLOW:{ticker}",
-                    $"query?function=CASH_FLOW&symbol={ticker}", CashFlowMapper.Map, out var cashFlowData))
+                    $"query?function=CASH_FLOW&symbol={ticker}", CashFlowMapper.Map, out var cashFlowData,
+                    isRawValid: raw => raw.Symbol != null))
             {
                 _logger.LogError($"I can't retrieve {nameof(cashFlowData)}");
                 metrics = default;
@@ -99,7 +102,8 @@ public class AlphaVantageDataReader : IDataReader
             }
 
             if (!_dataFetcher.TryLoadOrFetch<EarningsRaw, Earnings>($"EARNINGS:{ticker}",
-                    $"query?function=EARNINGS&symbol={ticker}", EarningsMapper.Map, out var earningsData))
+                    $"query?function=EARNINGS&symbol={ticker}", EarningsMapper.Map, out var earningsData,
+                    isRawValid: raw => raw.Symbol != null))
             {
                 _logger.LogError($"I can't retrieve {nameof(earningsData)}");
                 metrics = default;
@@ -303,7 +307,8 @@ public class AlphaVantageDataReader : IDataReader
     public bool TryGetCompanyNews(string ticker, out IEnumerable<NewsSentiment>? newsSentiments)
     {
         if (!_dataFetcher.TryLoadOrFetch<NewsSentimentRaw, List<NewsSentiment>>($"NEWS_SENTIMENT:{ticker}",
-                $"query?function=NEWS_SENTIMENT&symbol={ticker}", NewsSentimentMapper.Map, out var newsSentimentData))
+                $"query?function=NEWS_SENTIMENT&symbol={ticker}", NewsSentimentMapper.Map, out var newsSentimentData,
+                isRawValid: raw => raw.Feed != null))
         {
             _logger.LogError($"I can't retrieve {nameof(newsSentimentData)}");
             newsSentiments = default;
@@ -333,7 +338,8 @@ public class AlphaVantageDataReader : IDataReader
         limit ??= 10;
 
         if (!_dataFetcher.TryLoadOrFetch<BalanceSheetRaw, BalanceSheet>($"BALANCE_SHEET:{ticker}",
-                $"query?function=BALANCE_SHEET&symbol={ticker}", BalanceSheetMapper.Map, out var balanceSheetData))
+                $"query?function=BALANCE_SHEET&symbol={ticker}", BalanceSheetMapper.Map, out var balanceSheetData,
+                isRawValid: raw => raw.Symbol != null))
         {
             _logger.LogError($"I can't retrieve {nameof(balanceSheetData)}");
             results = default;
@@ -342,7 +348,7 @@ public class AlphaVantageDataReader : IDataReader
 
         if (!_dataFetcher.TryLoadOrFetch<IncomeStatementRaw, IncomeStatement>($"INCOME_STATEMENT:{ticker}",
                 $"query?function=INCOME_STATEMENT&symbol={ticker}", IncomeStatementMapper.Map,
-                out var incomeStatementData))
+                out var incomeStatementData, isRawValid: raw => raw.Symbol != null))
         {
             _logger.LogError($"I can't retrieve {nameof(incomeStatementData)}");
             results = default;
@@ -350,7 +356,8 @@ public class AlphaVantageDataReader : IDataReader
         }
 
         if (!_dataFetcher.TryLoadOrFetch<CashFlowRaw, CashFlow>($"CASH_FLOW:{ticker}",
-                $"query?function=CASH_FLOW&symbol={ticker}", CashFlowMapper.Map, out var cashFlowData))
+                $"query?function=CASH_FLOW&symbol={ticker}", CashFlowMapper.Map, out var cashFlowData,
+                isRawValid: raw => raw.Symbol != null))
         {
             _logger.LogError($"I can't retrieve {nameof(cashFlowData)}");
             results = default;

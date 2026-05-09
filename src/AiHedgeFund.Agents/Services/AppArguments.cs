@@ -13,7 +13,7 @@ public class AppArguments
     public List<string> Tickers { get; set; } = new();
     public DateTime StartDate { get; set; } = DateTime.Today.AddMonths(-3);
     public DateTime EndDate { get; set; } = DateTime.Today;
-
+    public string ModelName { get; private set; } = "gpt-4o-mini";
     public RiskLevel RiskLevel { get; private set; } = RiskLevel.Medium; // Default value
 
     public AppArguments()
@@ -65,6 +65,13 @@ public class AppArguments
                     else
                         throw new ArgumentException("Invalid or missing --risk-level. Use low, medium, or high.");
                     break;
+
+                case "--model":
+                    if (i + 1 < args.Length && !args[i + 1].StartsWith("--"))
+                        ModelName = args[++i];
+                    else
+                        throw new ArgumentException("Invalid or missing --model. Example: gpt-4o-mini, gpt-4o.");
+                    break;
             }
         }
 
@@ -89,6 +96,7 @@ public class AppArguments
         Console.WriteLine("  --start-date YYYY-MM-DD: Optional start date (default: 3 months ago)");
         Console.WriteLine("  --end-date YYYY-MM-DD  : Optional end date (default: today)");
         Console.WriteLine("  --risk-level [level]   : Optional valuation risk level: low, medium, or high (default: medium)");
+        Console.WriteLine("  --model [name]         : Optional OpenAI model name (default: gpt-4o-mini, e.g. gpt-4o, gpt-4-turbo)");
         Console.WriteLine("  --help or -h           : Show this help message and exit");
     }
 }

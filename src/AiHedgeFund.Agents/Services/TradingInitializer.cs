@@ -24,6 +24,7 @@ public class TradingInitializer
             Tickers = _args.Tickers,
             SelectedAnalysts = _args.AgentNames,
             RiskLevel = _args.RiskLevel,
+            ModelName = _args.ModelName,
             StartDate = _args.StartDate,
             EndDate = _args.EndDate
         };
@@ -37,35 +38,30 @@ public class TradingInitializer
             }
             state.FinancialMetrics.Add(ticker, metrics);
             if (!_dataReader.TryGetFinancialLineItems(ticker, DateTime.Today, "ttm", 10, out var financialLineItems))
-            {
-                _logger.LogError($"I can't retrieve financial data for {ticker}");
-                continue;
-            }
-            state.FinancialLineItems.Add(ticker, financialLineItems);
+                _logger.LogWarning($"Financial line items unavailable for {ticker} — trend analysis will be limited");
+            else
+                state.FinancialLineItems.Add(ticker, financialLineItems!);
+
             if (!_dataReader.TryGetPrices(ticker, state.StartDate, state.EndDate, out var prices))
             {
                 _logger.LogError($"I can't retrieve prices for {ticker}");
                 continue;
             }
-            if (!_dataReader.TryGetCompanyNews(ticker, out var companyNews))
-            {
-                _logger.LogError($"I can't retrieve company news data for {ticker}");
-                continue;
-            }
-            state.CompanyNews.Add(ticker, companyNews);
             state.Prices.Add(ticker, prices);
+
+            if (!_dataReader.TryGetCompanyNews(ticker, out var companyNews))
+                _logger.LogWarning($"Company news unavailable for {ticker} — sentiment analysis will be skipped");
+            else
+                state.CompanyNews.Add(ticker, companyNews!);
         }
 
         await Task.CompletedTask;
 
-        //Logger.Info($"Initial Cash: {state.InitialCash}");
-        //Logger.Info($"Margin Rate: {state.MarginRequirement}");
-        //Logger.Info($"Selected Tickers: {string.Join(", ", state.Tickers)}");
-        //Logger.Info($"Start Date: {state.StartDate}");
-        //Logger.Info($"End Date: {state.EndDate}");
-        //Logger.Info($"Show Reasoning: {state.ShowReasoning}");
-        //Logger.Info($"Model Name: {state.ModelName}");
-        //Logger.Info($"Risk Level: {state.RiskLevel}");
+        _logger.LogInformation("Model:      {Model}", state.ModelName);
+        _logger.LogInformation("Agents:     {Agents}", string.Join(", ", state.SelectedAnalysts));
+        _logger.LogInformation("Tickers:    {Tickers}", string.Join(", ", state.Tickers));
+        _logger.LogInformation("Risk level: {RiskLevel}", state.RiskLevel);
+        _logger.LogInformation("Period:     {Start:yyyy-MM-dd} → {End:yyyy-MM-dd}", state.StartDate, state.EndDate);
 
         return state;
     }

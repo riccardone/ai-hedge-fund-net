@@ -13,7 +13,8 @@ public static class LlmTradeSignalGenerator
         string systemMessage,
         object analysisData,
         string agentName,
-        out TradeSignal tradeSignal)
+        out TradeSignal tradeSignal,
+        string model = "gpt-4o-mini")
     {
         tradeSignal = default!;
 
@@ -31,7 +32,7 @@ Return JSON exactly in this format:
 
         var payload = new
         {
-            model = "gpt-4",
+            model,
             messages = new[]
             {
                 new { role = "system", content = systemMessage },

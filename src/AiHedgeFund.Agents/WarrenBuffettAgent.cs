@@ -50,7 +50,7 @@ public class WarrenBuffettAgent
             var maxScore = fundamentals.MaxScore + consistency.MaxScore + valuation.MaxScore;
 
             if (TryGenerateOutput(ticker, fundamentals, consistency, valuation, totalScore, maxScore,
-                    out var tradeSignal))
+                    state.ModelName, out var tradeSignal))
                 state.AddOrUpdateAgentReport<WarrenBuffettAgent>(tradeSignal, new[] { fundamentals, consistency, valuation });
             else
                 _logger.LogError($"Error while generating signal for {ticker}");
@@ -378,7 +378,7 @@ public class WarrenBuffettAgent
 
     private bool TryGenerateOutput(string ticker, FinancialAnalysisResult fundamentals,
         FinancialAnalysisResult consistency, FinancialAnalysisResult valuationSummary, double totalScore, int maxScore,
-        out TradeSignal tradeSignal)
+        string model, out TradeSignal tradeSignal)
     {
         tradeSignal = default!;
 
@@ -416,7 +416,8 @@ public class WarrenBuffettAgent
             systemMessage: systemMessage,
             analysisData: analysisData,
             agentName: "Warren Buffett",
-            out tradeSignal
+            out tradeSignal,
+            model: model
         );
     }
 }

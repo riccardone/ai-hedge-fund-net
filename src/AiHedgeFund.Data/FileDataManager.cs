@@ -36,6 +36,13 @@ public class FileDataManager
         return JsonSerializer.Deserialize<T>(json, _jsonOptions);
     }
 
+    public void Delete(string key)
+    {
+        var path = GetFilePath(key);
+        if (File.Exists(path))
+            File.Delete(path);
+    }
+
     private string GetFilePath(string key)
     {
         var safeKey = key.Replace(":", "_").Replace("/", "_").Replace("?", "_").Replace("&", "_").Replace("=", "_");

@@ -11,14 +11,23 @@ public class DataFetcher
     private readonly ConcurrentDictionary<string, object?> _memoryCache = new();
     private readonly HttpClient _client;
 
-    public DataFetcher(IHttpClientFactory httpClientFactory, ILogger<DataFetcher> logger)
+    public DataFetcher(IHttpClientFactory httpClientFactory, FileDataManager dataManager, ILogger<DataFetcher> logger)
     {
         _logger = logger;
-        _dataManager = new FileDataManager();
+        _dataManager = dataManager;
         _client = httpClientFactory.CreateClient("AlphaVantage");
     }
 
-    public bool TryLoadOrFetch<TRaw, T>(string key, string query, Func<TRaw, T> mapper, out T? result)
+    /// <summary>
+    /// Loads mapped data from memory → file cache → HTTP, in that order.
+    /// </summary>
+    /// <param name="isRawValid">
+    /// Optional guard called on data read from the file cache.
+    /// If the guard returns false the cache entry is deleted and the data is re-fetched from the API.
+    /// This prevents previously-cached provider error responses (e.g. empty time series, null-symbol
+    /// objects) from being silently treated as valid data.
+    /// </param>
+    public bool TryLoadOrFetch<TRaw, T>(string key, string query, Func<TRaw, T> mapper, out T? result, Func<TRaw, bool>? isRawValid = null)
     {
         if (_memoryCache.TryGetValue(key, out var cached) && cached is T typed)
         {
@@ -27,6 +36,13 @@ public class DataFetcher
         }
 
         var raw = _dataManager.Read<TRaw>(key);
+
+        if (raw != null && isRawValid != null && !isRawValid(raw))
+        {
+            _logger.LogWarning("Cached data for '{Key}' failed validation (likely a stale error response) — deleting and re-fetching", key);
+            _dataManager.Delete(key);
+            raw = default;
+        }
 
         if (raw == null && TryFetchData(query, out raw))
         {
@@ -58,17 +74,18 @@ public class DataFetcher
 
             var jsonString = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
 
-            var options = new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            };
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
-            if (jsonString.Contains("detected your API key"))
-                throw new ArgumentException($"Error message from the financial data provider: {jsonString}");
+            if (TryExtractProviderError(jsonString, out var providerError))
+            {
+                _logger.LogError("Alpha Vantage returned an error for '{0}': {1}", endpoint, providerError);
+                result = default;
+                return false;
+            }
 
             result = JsonSerializer.Deserialize<T>(jsonString, options);
             if (result != null) return true;
-            _logger.LogWarning("Deserialization returned null endpoint '{0}'", endpoint);
+            _logger.LogWarning("Deserialization returned null for endpoint '{0}'", endpoint);
             return false;
         }
         catch (HttpRequestException ex)
@@ -85,6 +102,31 @@ public class DataFetcher
         }
 
         result = default;
+        return false;
+    }
+
+    private static bool TryExtractProviderError(string jsonString, out string errorMessage)
+    {
+        errorMessage = string.Empty;
+        try
+        {
+            using var doc = JsonDocument.Parse(jsonString);
+            var root = doc.RootElement;
+
+            foreach (var field in new[] { "Error Message", "Information", "Note" })
+            {
+                if (root.TryGetProperty(field, out var prop))
+                {
+                    errorMessage = prop.GetString() ?? field;
+                    return true;
+                }
+            }
+        }
+        catch (JsonException)
+        {
+            // not valid JSON — let the main deserializer handle it
+        }
+
         return false;
     }
 }

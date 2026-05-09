@@ -7,12 +7,8 @@ public static class IncomeStatementMapper
         return new IncomeStatement
         {
             Symbol = raw.Symbol,
-            AnnualReports = raw.AnnualReports
-                .Select(MapReport)
-                .ToList(),
-            QuarterlyReports = raw.QuarterlyReports
-                .Select(MapReport)
-                .ToList()
+            AnnualReports = raw.AnnualReports?.Select(MapReport).ToList() ?? new(),
+            QuarterlyReports = raw.QuarterlyReports?.Select(MapReport).ToList() ?? new()
         };
     }
 
