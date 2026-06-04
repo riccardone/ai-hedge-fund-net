@@ -18,6 +18,7 @@ internal class Program
 {
     private static async Task Main(string[] args)
     {
+        System.Console.Title = "AI Hedge Fund - Console App";
         var appArgs = new AppArguments(args);
         var host = Host.CreateDefaultBuilder(args)
             .ConfigureServices((context, services) =>
