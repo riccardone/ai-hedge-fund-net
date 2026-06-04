@@ -80,6 +80,29 @@ To **force a data refresh**, manually delete the `data` folder located in the sa
 
 ---
 
+## Cutting a Release
+
+Releases are published automatically by GitHub Actions when a version tag is pushed. The workflow builds the solution, runs all tests, packs and publishes the NuGet packages (`AiHedgeFund.Contracts`, `AiHedgeFund.Agents`, `AiHedgeFund.Data`), and attaches self-contained console binaries (Linux, Windows, macOS) to a GitHub Release.
+
+Use the release script from Git Bash:
+
+```bash
+# Bump patch automatically (e.g. v0.2.11 → v0.2.12)
+./scripts/release.sh
+
+# Or supply an explicit version
+./scripts/release.sh v0.3.0
+```
+
+The script will:
+1. Determine the next patch version from the latest semver tag (or use the version you pass).
+2. Refuse to proceed if the working tree is dirty or the tag already exists.
+3. Create an annotated tag and push it — which triggers the CI release pipeline.
+
+> **Prerequisites:** `NUGET_API_KEY` must be set as a GitHub Actions secret in the repository before the first publish.
+
+---
+
 ## Credits
 
 This .NET project is loosely inspired by the [ai-hedge-fund](https://github.com/virattt/ai-hedge-fund) project written in Python.
