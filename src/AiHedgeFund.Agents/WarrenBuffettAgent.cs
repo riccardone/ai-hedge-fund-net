@@ -5,10 +5,13 @@ using Microsoft.Extensions.Logging;
 
 namespace AiHedgeFund.Agents;
 
-public class WarrenBuffettAgent 
+public class WarrenBuffettAgent : IAgent
 {
     private readonly ILogger<WarrenBuffettAgent> _logger;
     private readonly IHttpLib _httpLib;
+
+    public string Key => nameof(WarrenBuffettAgent).ToSnakeCase();
+    public string DisplayName => nameof(WarrenBuffettAgent).ToDisplayName();
 
     public WarrenBuffettAgent(IHttpLib httpLib, ILogger<WarrenBuffettAgent> logger)
     {
@@ -16,45 +19,33 @@ public class WarrenBuffettAgent
         _logger = logger;
     }
 
-    public void Run(TradingWorkflowState state)
+    public AgentResult Analyze(AgentInput input)
     {
-        if (!state.Tickers.Any())
+        var ticker = input.Ticker;
+        _logger.LogDebug("[Warren Buffett] Starting analysis for {0}", ticker);
+
+        var metrics = input.Metrics;
+        var lineItems = input.LineItems;
+
+        var marketCap = metrics.MaxBy(m => m.Period)?.MarketCap;
+        if (marketCap == null)
         {
-            _logger.LogWarning("No tickers provided.");
-            return;
+            _logger.LogWarning($"No market cap for {ticker}");
+            return AgentResult.Failure(Key, DisplayName, ticker);
         }
 
-        foreach (var ticker in state.Tickers)
-        {
-            _logger.LogDebug("[Warren Buffett] Starting analysis for {0}", ticker);
+        var fundamentals = Fundamentals(metrics);
+        var consistency = Consistency(metrics, input.RiskLevel);
+        var valuation = Valuation(metrics, RiskLevel.Medium, input.Prices);
 
-            if (!state.FinancialMetrics.TryGetValue(ticker, out var metrics) ||
-                !state.FinancialLineItems.TryGetValue(ticker, out var lineItems))
-            {
-                _logger.LogWarning($"Missing financial data for {ticker}");
-                continue;
-            }
+        var totalScore = fundamentals.Score + consistency.Score + valuation.Score;
+        var maxScore = fundamentals.MaxScore + consistency.MaxScore + valuation.MaxScore;
 
-            var marketCap = metrics.MaxBy(m => m.Period)?.MarketCap;
-            if (marketCap == null)
-            {
-                _logger.LogWarning($"No market cap for {ticker}");
-                continue;
-            }
+        if (TryGenerateOutput(ticker, fundamentals, consistency, valuation, totalScore, maxScore, input.Model, out var tradeSignal))
+            return new AgentResult(Key, DisplayName, ticker, tradeSignal, new[] { fundamentals, consistency, valuation });
 
-            var fundamentals = Fundamentals(metrics); // max score: 7
-            var consistency = Consistency(metrics, state.RiskLevel); // max score: 3
-            var valuation = Valuation(metrics, RiskLevel.Medium, state.Prices[ticker]);
-
-            var totalScore = fundamentals.Score + consistency.Score + valuation.Score;
-            var maxScore = fundamentals.MaxScore + consistency.MaxScore + valuation.MaxScore;
-
-            if (TryGenerateOutput(ticker, fundamentals, consistency, valuation, totalScore, maxScore,
-                    state.ModelName, out var tradeSignal))
-                state.AddOrUpdateAgentReport<WarrenBuffettAgent>(tradeSignal, new[] { fundamentals, consistency, valuation });
-            else
-                _logger.LogError($"Error while generating signal for {ticker}");
-        }
+        _logger.LogError($"Error while generating signal for {ticker}");
+        return AgentResult.Failure(Key, DisplayName, ticker);
     }
 
     private static FinancialAnalysisResult Valuation(IEnumerable<FinancialMetrics> metrics, RiskLevel riskLevel, IEnumerable<Price> prices)

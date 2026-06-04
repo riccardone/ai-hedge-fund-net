@@ -12,10 +12,13 @@ namespace AiHedgeFund.Agents;
 /// 3. Invests mostly in AI, robotics, genomic sequencing, fintech, and blockchain.
 /// 4. Willing to endure short-term volatility for long-term gains.
 /// </summary>
-public class CathieWoodAgent 
+public class CathieWoodAgent : IAgent
 {
     private readonly ILogger<CathieWoodAgent> _logger;
     private readonly IHttpLib _httpLib;
+
+    public string Key => nameof(CathieWoodAgent).ToSnakeCase();
+    public string DisplayName => nameof(CathieWoodAgent).ToDisplayName();
 
     public CathieWoodAgent(IHttpLib chatter, ILogger<CathieWoodAgent> logger)
     {
@@ -23,45 +26,35 @@ public class CathieWoodAgent
         _logger = logger;
     }
 
-    public void Run(TradingWorkflowState state)
+    public AgentResult Analyze(AgentInput input)
     {
-        if (!state.Tickers.Any())
+        var ticker = input.Ticker;
+        _logger.LogDebug($"[CathieWood] Starting analysis for {ticker}");
+
+        var metrics = input.Metrics;
+        var lineItems = input.LineItems;
+
+        var marketCap = metrics.MaxBy(m => m.Period)?.MarketCap;
+        if (marketCap == null)
         {
-            _logger.LogWarning("No ticker provided.");
-            return;
+            _logger.LogWarning($"No market cap for {ticker}");
+            return AgentResult.Failure(Key, DisplayName, ticker);
         }
 
-        foreach (var ticker in state.Tickers)
-        {
-            _logger.LogDebug($"[CathieWood] Starting analysis for {ticker}");
+        var disruptive = DisruptivePotential(metrics, lineItems);
+        var innovation = InnovationGrowth(metrics, lineItems);
+        var valuation = Valuation(metrics, marketCap.Value);
 
-            if (!state.FinancialMetrics.TryGetValue(ticker, out var metrics)
-                || !state.FinancialLineItems.TryGetValue(ticker, out var lineItems))
-            {
-                _logger.LogWarning($"Missing data for {ticker}");
-                continue;
-            }
+        var totalScore = disruptive.Score + innovation.Score + valuation.Score;
+        var maxScore = Math.Max(1, disruptive.MaxScore + innovation.MaxScore + valuation.MaxScore);
 
-            var marketCap = metrics.MaxBy(m => m.Period)?.MarketCap;
-            if (marketCap == null)
-            {
-                _logger.LogWarning($"No market cap for {ticker}");
-                continue;
-            }
+        if (TryGenerateOutput(input.Model, ticker, disruptive, innovation, valuation, totalScore, maxScore,
+                out var tradeSignal))
+            return new AgentResult(Key, DisplayName, ticker, tradeSignal,
+                new[] { disruptive, innovation, valuation });
 
-            var disruptive = DisruptivePotential(metrics, lineItems);
-            var innovation = InnovationGrowth(metrics, lineItems);
-            var valuation = Valuation(metrics, marketCap.Value);
-
-            var totalScore = disruptive.Score + innovation.Score + valuation.Score;
-            var maxScore = Math.Max(1, disruptive.MaxScore + innovation.MaxScore + valuation.MaxScore);
-
-            if (TryGenerateOutput(state, ticker, disruptive, innovation, valuation, totalScore, maxScore,
-                    out var tradeSignal))
-                state.AddOrUpdateAgentReport<CathieWoodAgent>(tradeSignal, new[] { disruptive, innovation, valuation });
-            else
-                _logger.LogError($"Error while running {nameof(CathieWoodAgent)}");
-        }
+        _logger.LogError($"Error while running {nameof(CathieWoodAgent)}");
+        return AgentResult.Failure(Key, DisplayName, ticker);
     }
 
     private FinancialAnalysisResult DisruptivePotential(IEnumerable<FinancialMetrics> metrics, IEnumerable<FinancialLineItem> lineItems)
@@ -288,7 +281,7 @@ public class CathieWoodAgent
         return new FinancialAnalysisResult(nameof(Valuation), score, new[] { details });
     }
 
-    private bool TryGenerateOutput(TradingWorkflowState state, string ticker, FinancialAnalysisResult disruptive,
+    private bool TryGenerateOutput(string model, string ticker, FinancialAnalysisResult disruptive,
         FinancialAnalysisResult innovation, FinancialAnalysisResult valuation, decimal totalScore, int maxScore,
         out TradeSignal tradeSignal)
     {
@@ -324,7 +317,7 @@ Rules:
             analysisData,
             agentName: "Cathie Wood",
             out tradeSignal,
-            model: state.ModelName
+            model: model
         );
     }
 }

@@ -33,12 +33,12 @@ public class AgentBootstrapper : IHostedService
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        _registry.Register($"{nameof(BenGrahamAgent).ToSnakeCase()}", _benGraham.Run);
-        _registry.Register($"{nameof(CathieWoodAgent).ToSnakeCase()}", _cathieWood.Run);
-        _registry.Register($"{nameof(BillAckmanAgent).ToSnakeCase()}", _billAckman.Run);
-        _registry.Register($"{nameof(CharlieMungerAgent).ToSnakeCase()}", _charlieMunger.Run);
-        _registry.Register($"{nameof(StanleyDruckenmillerAgent).ToSnakeCase()}", _stanleyDruckenmiller.Run);
-        _registry.Register($"{nameof(WarrenBuffettAgent).ToSnakeCase()}", _warrenBuffett.Run);
+        _registry.Register(_benGraham);
+        _registry.Register(_cathieWood);
+        _registry.Register(_billAckman);
+        _registry.Register(_charlieMunger);
+        _registry.Register(_stanleyDruckenmiller);
+        _registry.Register(_warrenBuffett);
         return Task.CompletedTask;
     }
 

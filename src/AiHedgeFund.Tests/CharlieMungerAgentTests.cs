@@ -65,12 +65,22 @@ namespace AiHedgeFund.Tests
         {
             // Assign
             var sut = new CharlieMungerAgent(new FakeHttpLib(), new NullLogger<CharlieMungerAgent>());
+            var input = new AgentInput(
+                Ticker: "AAPL",
+                Exchange: "NASDAQ",
+                RiskLevel: RiskLevel.Medium,
+                Model: "gpt-4o-mini",
+                Metrics: _state.FinancialMetrics["AAPL"],
+                LineItems: _state.FinancialLineItems["AAPL"],
+                Prices: Enumerable.Empty<Price>(),
+                News: Enumerable.Empty<NewsSentiment>()
+            );
 
             // Act
-           sut.Run(_state);
+            var result = sut.Analyze(input);
 
             // Assert
-            Assert.That(_state.AnalystSignals.First().Value.Values.First().Confidence.Equals(85M));
+            Assert.That(result.Signal.Confidence.Equals(85M));
         }
     }
 }

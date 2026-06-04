@@ -1,12 +1,11 @@
 ﻿using System.Data;
 using AiHedgeFund.Contracts;
 using AiHedgeFund.Contracts.Model;
-using IDataReader = AiHedgeFund.Contracts.IDataReader;
 using Microsoft.Extensions.Logging;
 
 namespace AiHedgeFund.Data.AlphaVantage;
 
-public class AlphaVantageDataReader : IDataReader
+public class AlphaVantageDataReader : Contracts.IDataReader
 {
     private readonly ILogger<AlphaVantageDataReader> _logger;
     private readonly DataFetcher _dataFetcher;

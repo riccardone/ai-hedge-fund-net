@@ -9,10 +9,13 @@ namespace AiHedgeFund.Agents;
 /// Analyzes stocks using Charlie Munger's investing principles and mental models.
 /// Focuses on moat strength, management quality, predictability, and valuation.
 /// </summary>
-public class CharlieMungerAgent 
+public class CharlieMungerAgent : IAgent
 {
     private readonly ILogger<CharlieMungerAgent> _logger;
     private readonly IHttpLib _httpLib;
+
+    public string Key => nameof(CharlieMungerAgent).ToSnakeCase();
+    public string DisplayName => nameof(CharlieMungerAgent).ToDisplayName();
 
     public CharlieMungerAgent(IHttpLib chatter, ILogger<CharlieMungerAgent> logger)
     {
@@ -20,51 +23,41 @@ public class CharlieMungerAgent
         _logger = logger;
     }
 
-    public void Run(TradingWorkflowState state)
+    public AgentResult Analyze(AgentInput input)
     {
-        if (!state.Tickers.Any())
+        var ticker = input.Ticker;
+        _logger.LogDebug("[CharlieMunger] Starting analysis for {0}", ticker);
+
+        var metrics = input.Metrics;
+        var lineItems = input.LineItems;
+
+        var marketCap = metrics.OrderByDescending(m => m.EndDate).FirstOrDefault()?.MarketCap;
+        if (marketCap == null)
         {
-            _logger.LogWarning("No ticker provided.");
-            return;
+            _logger.LogWarning($"No market cap for {ticker}");
+            return AgentResult.Failure(Key, DisplayName, ticker);
         }
 
-        foreach (var ticker in state.Tickers)
-        {
-            _logger.LogDebug("[CharlieMunger] Starting analysis for {0}", ticker);
+        var moatStrength = MoatStrength(metrics, lineItems);
+        var managementQuality = ManagementQuality(metrics, lineItems);
+        var predictability = Predictability(metrics, lineItems);
+        var companyNews = new FinancialAnalysisResult("CompanyNews", 5, new[] { "no news available" });
+        if (input.News != null && input.News.Any())
+            companyNews = CompanyNews(input.News.ToList());
+        var valuation = Valuation(metrics, marketCap);
+        var totalScore = moatStrength.Score + managementQuality.Score + companyNews.Score + predictability.Score +
+                         valuation.Score;
+        var maxScore = Math.Max(1,
+            moatStrength.MaxScore + managementQuality.MaxScore + companyNews.MaxScore + predictability.MaxScore +
+            valuation.MaxScore);
 
-            if (!state.FinancialMetrics.TryGetValue(ticker, out var metrics)
-                || !state.FinancialLineItems.TryGetValue(ticker, out var lineItems))
-            {
-                _logger.LogWarning($"Missing data for {ticker}");
-                continue;
-            }
+        if (TryGenerateOutput(input.Model, ticker, moatStrength, managementQuality, predictability, companyNews,
+                valuation, totalScore, maxScore, out var tradeSignal))
+            return new AgentResult(Key, DisplayName, ticker, tradeSignal,
+                new[] { moatStrength, managementQuality, predictability, companyNews, valuation });
 
-            var marketCap = metrics.OrderByDescending(m => m.EndDate).FirstOrDefault()?.MarketCap;
-            if (marketCap == null)
-            {
-                _logger.LogWarning($"No market cap for {ticker}");
-                continue;
-            }
-
-            var moatStrength = MoatStrength(metrics, lineItems);
-            var managementQuality = ManagementQuality(metrics, lineItems);
-            var predictability = Predictability(metrics, lineItems);
-            var companyNews = new FinancialAnalysisResult("CompanyNews",5, new[] { "no news available" });
-            if (state.CompanyNews.TryGetValue(ticker, out var newsList) && newsList != null && newsList.Any())
-                companyNews = CompanyNews(newsList.ToList());
-            var valuation = Valuation(metrics, marketCap);
-            var totalScore = moatStrength.Score + managementQuality.Score + companyNews.Score + predictability.Score +
-                             valuation.Score;
-            var maxScore = Math.Max(1,
-                moatStrength.MaxScore + managementQuality.MaxScore + companyNews.MaxScore + predictability.MaxScore +
-                valuation.MaxScore);
-
-            if (TryGenerateOutput(state, ticker, moatStrength, managementQuality, predictability, companyNews,
-                    valuation, totalScore, maxScore, out var tradeSignal))
-                state.AddOrUpdateAgentReport<CharlieMungerAgent>(tradeSignal, new []{moatStrength, managementQuality, predictability, companyNews, valuation});
-            else
-                _logger.LogError($"Error while running {nameof(CharlieMungerAgent)}");
-        }
+        _logger.LogError($"Error while running {nameof(CharlieMungerAgent)}");
+        return AgentResult.Failure(Key, DisplayName, ticker);
     }
 
     /// <summary>
@@ -904,7 +897,7 @@ public class CharlieMungerAgent
         return result;
     }
 
-    private bool TryGenerateOutput(TradingWorkflowState state, string ticker, FinancialAnalysisResult analysisResult,
+    private bool TryGenerateOutput(string model, string ticker, FinancialAnalysisResult analysisResult,
         FinancialAnalysisResult financialAnalysisResult, FinancialAnalysisResult businessQuality,
         FinancialAnalysisResult companyNews, FinancialAnalysisResult valuation, int totalScore, int maxScore,
         out TradeSignal tradeSignal)
@@ -955,7 +948,7 @@ Rules:
             analysisData,
             agentName: "Charlie Munger",
             out tradeSignal,
-            model: state.ModelName
+            model: model
         );
     }
 }

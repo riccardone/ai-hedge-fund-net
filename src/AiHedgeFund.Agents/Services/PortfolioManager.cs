@@ -15,36 +15,55 @@ public class PortfolioManager
         _logger = logger;
     }
 
-    public void Evaluate(string agentName, TradingWorkflowState state)
+    public IReadOnlyList<AgentResult> Evaluate(string agentKey, TradingWorkflowState state)
     {
-        if (!_agentRegistry.TryGet<AgentReport>(agentName, out var agentFunc))
-            _logger.LogWarning("Agent not found or type mismatch");
-        agentFunc(state);
+        if (!_agentRegistry.TryGet(agentKey, out var agent) || agent is null)
+        {
+            _logger.LogWarning("Agent '{AgentKey}' not found in registry", agentKey);
+            return Array.Empty<AgentResult>();
+        }
+
+        var results = new List<AgentResult>();
+        foreach (var ticker in state.Tickers)
+        {
+            if (!state.FinancialMetrics.TryGetValue(ticker, out var metrics) ||
+                !state.FinancialLineItems.TryGetValue(ticker, out var lineItems))
+            {
+                _logger.LogWarning("Missing financial data for {Ticker} — skipping {AgentKey}", ticker, agentKey);
+                continue;
+            }
+
+            state.Prices.TryGetValue(ticker, out var prices);
+            state.CompanyNews.TryGetValue(ticker, out var news);
+
+            var input = new AgentInput(
+                Ticker: ticker,
+                Exchange: string.Empty,
+                RiskLevel: state.RiskLevel,
+                Model: state.ModelName,
+                Metrics: metrics,
+                LineItems: lineItems,
+                Prices: prices ?? Enumerable.Empty<Price>(),
+                News: news ?? Enumerable.Empty<NewsSentiment>()
+            );
+
+            results.Add(agent.Analyze(input));
+        }
+
+        return results;
     }
 
-    public void RunRiskAssessments(TradingWorkflowState state, RiskManagerAgent riskAgent)
+    public void RunRiskAssessments(TradingWorkflowState state, RiskManagerAgent riskAgent,
+        IReadOnlyList<AgentResult> agentResults)
     {
         riskAgent.Run(state);
 
-        foreach (var agentEntry in state.AnalystSignals)
+        foreach (var result in agentResults)
         {
-            foreach (var tickerEntry in agentEntry.Value)
-            {
-                var agentReport = tickerEntry.Value;
-                var tradeSignal = agentReport?.TradeSignal;
-
-                if (tradeSignal == null)
-                    continue;
-
-                if (state.RiskAssessments.TryGetValue(tradeSignal.Ticker, out var risk))
-                {
-                    tradeSignal.SetRiskAssessment(risk);
-                }
-                else
-                {
-                    _logger.LogWarning($"No risk assessment found for ticker {tradeSignal.Ticker}");
-                }
-            }
+            if (state.RiskAssessments.TryGetValue(result.Ticker, out var risk))
+                result.Signal.SetRiskAssessment(risk);
+            else
+                _logger.LogWarning("No risk assessment found for ticker {Ticker}", result.Ticker);
         }
     }
 }

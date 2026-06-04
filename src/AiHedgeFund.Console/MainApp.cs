@@ -1,5 +1,6 @@
 ﻿using AiHedgeFund.Agents;
 using AiHedgeFund.Agents.Services;
+using AiHedgeFund.Contracts;
 using Microsoft.Extensions.Hosting;
 
 namespace AiHedgeFund.Console;
@@ -21,23 +22,27 @@ public class MainApp : IHostedService
     {
         var state = await _initializer.InitializeAsync();
 
+        var allResults = new List<AgentResult>();
         foreach (var agent in state.SelectedAnalysts)
         {
-            _portfolio.Evaluate(agent, state);
+            var results = _portfolio.Evaluate(agent, state);
+            allResults.AddRange(results);
         }
 
-        _portfolio.RunRiskAssessments(state, _riskAgent);
+        _portfolio.RunRiskAssessments(state, _riskAgent, allResults);
 
-        foreach (var kvp in state.AnalystSignals)
+        foreach (var group in allResults.GroupBy(r => r.AgentKey))
         {
+            var first = group.First();
             ConsoleOutputFormatter.PrintAgentReport(
-                kvp.Key,
+                first.AgentKey,
+                first.AgentDisplayName,
                 state.ModelProvider,
                 state.ModelName,
                 state.RiskLevel.ToString(),
                 state.StartDate,
                 state.EndDate,
-                kvp.Value.Values.ToList()
+                group.ToList()
             );
         }
 

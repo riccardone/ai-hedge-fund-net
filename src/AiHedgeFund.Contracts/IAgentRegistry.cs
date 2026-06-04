@@ -2,7 +2,7 @@
 
 public interface IAgentRegistry
 {
-    void Register(string name, Action<TradingWorkflowState> action);
-    bool TryGet<T>(string name, out Action<TradingWorkflowState>? agentAction);
-    IEnumerable<string> RegisteredAgentNames { get; }
+    void Register(IAgent agent);
+    bool TryGet(string key, out IAgent? agent);
+    IEnumerable<IAgent> All { get; }
 }

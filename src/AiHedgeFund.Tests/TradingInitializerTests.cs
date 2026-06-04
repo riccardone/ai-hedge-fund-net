@@ -76,24 +76,22 @@ public class TradingInitializerTests
             FinancialMetricsFactory.CreateTestMetrics(Ticker, 2024, 12000, 14000, 2200, 520, 1_200_000_000),
         };
 
-        var state = new TradingWorkflowState
-        {
-            Tickers = [Ticker],
-            FinancialMetrics = new Dictionary<string, IEnumerable<FinancialMetrics>> { { Ticker, metrics } },
-            // FinancialLineItems intentionally absent — mirrors what happens when the
-            // initializer skips line items due to a fetch failure
-        };
-
         var sut = new BenGrahamAgent(new FakeHttpLib(), NullLogger<BenGrahamAgent>.Instance);
-        sut.Run(state);
-
-        state.AnalystSignals.TryGetValue("ben_graham", out var agentSignals);
-        AgentReport? report = null;
-        agentSignals?.TryGetValue(Ticker, out report);
+        var input = new AgentInput(
+            Ticker: Ticker,
+            Exchange: string.Empty,
+            RiskLevel: RiskLevel.Medium,
+            Model: "gpt-4o-mini",
+            Metrics: metrics,
+            LineItems: Enumerable.Empty<FinancialLineItem>(),
+            Prices: Enumerable.Empty<Price>(),
+            News: Enumerable.Empty<NewsSentiment>()
+        );
+        var result = sut.Analyze(input);
 
         // EarningsStability should score > 0 because EPS data IS present in metrics
-        Assert.That(report, Is.Not.Null, "Agent should produce a report");
-        Assert.That(report!.Confidence, Is.GreaterThan(0),
+        Assert.That(result, Is.Not.Null, "Agent should produce a result");
+        Assert.That(result.Signal.Confidence, Is.GreaterThan(0),
             "Agent should produce a non-zero confidence when metrics are available");
     }
 }

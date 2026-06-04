@@ -12,10 +12,13 @@ namespace AiHedgeFund.Agents;
 /// 3. Discount to intrinsic value (e.g., Graham Number or net-net).
 /// 4. Adequate margin of safety.
 /// </summary>
-public class BenGrahamAgent 
+public class BenGrahamAgent : IAgent
 {
     private readonly IHttpLib _httpLib;
-    private readonly ILogger<BenGrahamAgent> _logger; 
+    private readonly ILogger<BenGrahamAgent> _logger;
+
+    public string Key => nameof(BenGrahamAgent).ToSnakeCase();
+    public string DisplayName => nameof(BenGrahamAgent).ToDisplayName();
 
     public BenGrahamAgent(IHttpLib httpLib, ILogger<BenGrahamAgent> logger)
     {
@@ -23,39 +26,32 @@ public class BenGrahamAgent
         _logger = logger;
     }
 
-    public void Run(TradingWorkflowState state)
+    public AgentResult Analyze(AgentInput input)
     {
-        if (!state.Tickers.Any())
-        {
-            _logger.LogWarning("No ticker provided.");
-            return;
-        }
+        var ticker = input.Ticker;
+        _logger.LogDebug("[BenGraham] Starting analysis for {Ticker}", ticker);
 
-        foreach (var ticker in state.Tickers)
-        {
-            _logger.LogDebug("[BenGraham] Starting analysis for {Ticker}", ticker);
+        var earnings = EarningsStability(input.Metrics);
+        var strength = FinancialStrength(input.LineItems);
+        var valuation = Valuation(input.Metrics, input.LineItems, input.Prices);
 
-            var earnings = EarningsStability(state, ticker);
-            var strength = FinancialStrength(state, ticker);
-            var valuation = Valuation(state, ticker);
+        var totalScore = earnings.Score + strength.Score + valuation.Score;
+        var maxScore = Math.Max(1, earnings.MaxScore + strength.MaxScore + valuation.MaxScore);
 
-            var totalScore = earnings.Score + strength.Score + valuation.Score;
-            var maxScore = Math.Max(1, earnings.MaxScore + strength.MaxScore + valuation.MaxScore);
+        if (TryGenerateOutput(ticker, totalScore, maxScore, earnings, strength, valuation, input.Model, out var tradeSignal))
+            return new AgentResult(Key, DisplayName, ticker, tradeSignal, new[] { earnings, strength, valuation });
 
-            if (TryGenerateOutput(ticker, totalScore, maxScore, earnings, strength, valuation, state.ModelName, out var tradeSignal))
-                state.AddOrUpdateAgentReport<BenGrahamAgent>(tradeSignal, new[] { earnings, strength, valuation });
-            else
-                _logger.LogError("Error while running {AgentName}", nameof(BenGrahamAgent));
-        }
+        _logger.LogError("Error while running {AgentName}", nameof(BenGrahamAgent));
+        return AgentResult.Failure(Key, DisplayName, ticker);
     }
 
-    private static FinancialAnalysisResult EarningsStability(TradingWorkflowState state, string ticker)
+    private static FinancialAnalysisResult EarningsStability(IEnumerable<FinancialMetrics> metrics)
     {
         var result = new FinancialAnalysisResult(nameof(EarningsStability), 0, new List<string>());
 
-        if (!state.FinancialMetrics.TryGetValue(ticker, out var metrics))
+        if (!metrics.Any())
         {
-            result.AddDetail($"Data not present for {ticker}");
+            result.AddDetail("No financial metrics data available.");
             return result;
         }
 
@@ -115,11 +111,11 @@ public class BenGrahamAgent
         return result;
     }
 
-    private FinancialAnalysisResult FinancialStrength(TradingWorkflowState state, string ticker)
+    private FinancialAnalysisResult FinancialStrength(IEnumerable<FinancialLineItem> lineItems)
     {
         var result = new FinancialAnalysisResult(nameof(FinancialStrength), 0, new List<string>());
 
-        if (!state.FinancialLineItems.TryGetValue(ticker, out var items) || !TryGetLatestCompleteItem(items, out var latest))
+        if (!TryGetLatestCompleteItem(lineItems, out var latest))
         {
             result.AddDetail("No data for financial strength.");
             return result;
@@ -153,18 +149,17 @@ public class BenGrahamAgent
         return result;
     }
 
-    private FinancialAnalysisResult Valuation(TradingWorkflowState state, string ticker)
+    private FinancialAnalysisResult Valuation(IEnumerable<FinancialMetrics> metrics, IEnumerable<FinancialLineItem> lineItems, IEnumerable<Price> prices)
     {
         var result = new FinancialAnalysisResult(nameof(Valuation), 0, new List<string>());
 
-        if (!state.FinancialLineItems.TryGetValue(ticker, out var items) ||
-            !TryGetLatestCompleteItem(items, out var latest))
+        if (!TryGetLatestCompleteItem(lineItems, out var latest))
         {
             result.AddDetail("No data for valuation.");
             return result;
         }
 
-        if (!state.FinancialMetrics.TryGetValue(ticker, out var metrics) || !metrics.Any())
+        if (!metrics.Any())
         {
             result.AddDetail("Missing financial metrics.");
             return result;
@@ -221,7 +216,7 @@ public class BenGrahamAgent
 
             var grahamNumber = Convert.ToDecimal(Math.Sqrt(22.5 * (double)ttmEps.Value * (double)bvps.Value));
 
-            if (state.Prices.TryGetValue(ticker, out var prices) && prices.Any())
+            if (prices != null && prices.Any())
             {
                 var price = prices.Last().Close;
 

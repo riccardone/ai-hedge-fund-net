@@ -9,10 +9,13 @@ namespace AiHedgeFund.Agents;
 /// Analyzes stocks using Bill Ackman's investing principles and LLM reasoning.
 /// Fetches multiple periods of data so we can analyze long-term trends.
 /// </summary>
-public class BillAckmanAgent 
+public class BillAckmanAgent : IAgent
 {
     private readonly ILogger<BillAckmanAgent> _logger;
     private readonly IHttpLib _httpLib;
+
+    public string Key => nameof(BillAckmanAgent).ToSnakeCase();
+    public string DisplayName => nameof(BillAckmanAgent).ToDisplayName();
 
     public BillAckmanAgent(IHttpLib httpLib, ILogger<BillAckmanAgent> logger)
     {
@@ -20,46 +23,35 @@ public class BillAckmanAgent
         _logger = logger;
     }
 
-    public void Run(TradingWorkflowState state)
+    public AgentResult Analyze(AgentInput input)
     {
-        if (!state.Tickers.Any())
+        var ticker = input.Ticker;
+        _logger.LogDebug("[BillAckman] Starting analysis for {Ticker}", ticker);
+
+        var metrics = input.Metrics;
+        var lineItems = input.LineItems;
+
+        var marketCap = metrics.MaxBy(m => m.Period)?.MarketCap;
+        if (marketCap == null)
         {
-            _logger.LogWarning("No ticker provided.");
-            return;
+            _logger.LogWarning($"No market cap for {ticker}");
+            return AgentResult.Failure(Key, DisplayName, ticker);
         }
-        
-        foreach (var ticker in state.Tickers)
-        {
-            _logger.LogDebug("[BillAckman] Starting analysis for {Ticker}", ticker);
 
-            if (!state.FinancialMetrics.TryGetValue(ticker, out var metrics)
-                || !state.FinancialLineItems.TryGetValue(ticker, out var lineItems))
-            {
-                _logger.LogWarning($"Missing data for {ticker}");
-                continue;
-            }
+        var businessQuality = BusinessQuality(metrics, lineItems);
+        var financialDiscipline = FinancialDiscipline(metrics, lineItems);
+        var valuation = Valuation(metrics, marketCap);
 
-            var marketCap = metrics.MaxBy(m => m.Period)?.MarketCap;
-            if (marketCap == null)
-            {
-                _logger.LogWarning($"No market cap for {ticker}");
-                continue;
-            }
+        var totalScore = businessQuality.Score + financialDiscipline.Score + valuation.Score;
+        var maxScore = Math.Max(1, businessQuality.MaxScore + financialDiscipline.MaxScore + valuation.MaxScore);
 
-            var businessQuality = BusinessQuality(metrics, lineItems);
-            var financialDiscipline = FinancialDiscipline(metrics, lineItems);
-            var valuation = Valuation(metrics, marketCap);
+        if (TryGenerateOutput(ticker, businessQuality, financialDiscipline, valuation, totalScore, maxScore,
+                input.Model, out var tradeSignal))
+            return new AgentResult(Key, DisplayName, ticker, tradeSignal,
+                new[] { businessQuality, financialDiscipline, valuation });
 
-            var totalScore = businessQuality.Score + financialDiscipline.Score + valuation.Score;
-            var maxScore = Math.Max(1, businessQuality.MaxScore + financialDiscipline.MaxScore + valuation.MaxScore);
-
-            if (TryGenerateOutput(ticker, businessQuality, financialDiscipline, valuation, totalScore, maxScore,
-                    state.ModelName, out var tradeSignal))
-                state.AddOrUpdateAgentReport<BillAckmanAgent>(tradeSignal,
-                    new[] { businessQuality, financialDiscipline, valuation });
-            else
-                _logger.LogError($"Error while running {nameof(BillAckmanAgent)}");
-        }
+        _logger.LogError($"Error while running {nameof(BillAckmanAgent)}");
+        return AgentResult.Failure(Key, DisplayName, ticker);
     }
 
     private static FinancialAnalysisResult BusinessQuality(IEnumerable<FinancialMetrics> metrics, IEnumerable<FinancialLineItem> lineItems)

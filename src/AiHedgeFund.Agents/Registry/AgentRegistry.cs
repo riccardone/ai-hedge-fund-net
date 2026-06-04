@@ -4,24 +4,11 @@ namespace AiHedgeFund.Agents.Registry;
 
 public class AgentRegistry : IAgentRegistry
 {
-    private readonly Dictionary<string, Delegate> _agents = new();
+    private readonly Dictionary<string, IAgent> _agents = new();
 
-    public void Register(string name, Action<TradingWorkflowState> action)
-    {
-        _agents[name] = action;
-    }
+    public void Register(IAgent agent) => _agents[agent.Key] = agent;
 
-    public bool TryGet<T>(string name, out Action<TradingWorkflowState>? agentAction)
-    {
-        if (_agents.TryGetValue(name, out var del) && del is Action<TradingWorkflowState> typed)
-        {
-            agentAction = typed;
-            return true;
-        }
+    public bool TryGet(string key, out IAgent? agent) => _agents.TryGetValue(key, out agent);
 
-        agentAction = null;
-        return false;
-    }
-
-    public IEnumerable<string> RegisteredAgentNames => _agents.Keys;
+    public IEnumerable<IAgent> All => _agents.Values;
 }
