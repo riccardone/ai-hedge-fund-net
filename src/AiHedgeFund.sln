@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.13.35828.75
+# Visual Studio Version 18
+VisualStudioVersion = 18.6.11822.322 stable
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AiHedgeFund.Console", "AiHedgeFund.Console\AiHedgeFund.Console.csproj", "{BE6F33BA-52E9-4C4A-99CA-4567BE4A3E70}"
 EndProject
@@ -12,6 +12,18 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AiHedgeFund.Data", "AiHedgeFund.Data\AiHedgeFund.Data.csproj", "{C9E70382-747D-4345-AAC1-51B7201A6AB8}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AiHedgeFund.Tests", "AiHedgeFund.Tests\AiHedgeFund.Tests.csproj", "{8D2E8B8E-D57D-4400-9C8D-A177E11AB653}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{A7FD5068-DBAA-43DB-A1A3-AAA9884E7705}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "instructions", "instructions", "{EE2FDFAE-680A-4D32-B7B5-C829EF59D7FA}"
+	ProjectSection(SolutionItems) = preProject
+		..\.github\instructions\general.instructions.md = ..\.github\instructions\general.instructions.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{F60A6C2E-5B90-43B0-8C5C-51B96C39ACA6}"
+	ProjectSection(SolutionItems) = preProject
+		..\.github\workflows\release.yml = ..\.github\workflows\release.yml
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -42,6 +54,10 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{EE2FDFAE-680A-4D32-B7B5-C829EF59D7FA} = {A7FD5068-DBAA-43DB-A1A3-AAA9884E7705}
+		{F60A6C2E-5B90-43B0-8C5C-51B96C39ACA6} = {A7FD5068-DBAA-43DB-A1A3-AAA9884E7705}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {07769958-4249-44C2-939E-1AAE6451068A}
