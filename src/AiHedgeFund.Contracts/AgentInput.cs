@@ -10,5 +10,6 @@ public record AgentInput(
     IEnumerable<FinancialMetrics> Metrics,
     IEnumerable<FinancialLineItem> LineItems,
     IEnumerable<Price> Prices,
-    IEnumerable<NewsSentiment> News
+    IEnumerable<NewsSentiment> News,
+    BaseRate? BaseRate = null
 );

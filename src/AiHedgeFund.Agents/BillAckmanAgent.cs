@@ -46,7 +46,7 @@ public class BillAckmanAgent : IAgent
         var maxScore = Math.Max(1, businessQuality.MaxScore + financialDiscipline.MaxScore + valuation.MaxScore);
 
         if (TryGenerateOutput(ticker, businessQuality, financialDiscipline, valuation, totalScore, maxScore,
-                input.Model, out var tradeSignal))
+                input.Model, input.BaseRate, out var tradeSignal))
             return new AgentResult(Key, DisplayName, ticker, tradeSignal,
                 new[] { businessQuality, financialDiscipline, valuation });
 
@@ -330,7 +330,7 @@ public class BillAckmanAgent : IAgent
 
     private bool TryGenerateOutput(string ticker, FinancialAnalysisResult businessQuality,
         FinancialAnalysisResult financialDiscipline, FinancialAnalysisResult valuation, int totalScore, int maxScore,
-        string model, out TradeSignal tradeSignal)
+        string model, BaseRate? baseRate, out TradeSignal tradeSignal)
     {
         var systemMessage = """
         You are a Bill Ackman AI agent, making investment decisions using his principles:
@@ -369,7 +369,8 @@ public class BillAckmanAgent : IAgent
             analysisData,
             agentName: "Bill Ackman",
             out tradeSignal,
-            model: model
+            model: model,
+            baseRate: baseRate
         );
     }
 }

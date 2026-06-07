@@ -52,7 +52,7 @@ public class CharlieMungerAgent : IAgent
             valuation.MaxScore);
 
         if (TryGenerateOutput(input.Model, ticker, moatStrength, managementQuality, predictability, companyNews,
-                valuation, totalScore, maxScore, out var tradeSignal))
+                valuation, totalScore, maxScore, input.BaseRate, out var tradeSignal))
             return new AgentResult(Key, DisplayName, ticker, tradeSignal,
                 new[] { moatStrength, managementQuality, predictability, companyNews, valuation });
 
@@ -900,7 +900,7 @@ public class CharlieMungerAgent : IAgent
     private bool TryGenerateOutput(string model, string ticker, FinancialAnalysisResult analysisResult,
         FinancialAnalysisResult financialAnalysisResult, FinancialAnalysisResult businessQuality,
         FinancialAnalysisResult companyNews, FinancialAnalysisResult valuation, int totalScore, int maxScore,
-        out TradeSignal tradeSignal)
+        BaseRate? baseRate, out TradeSignal tradeSignal)
     {
         tradeSignal = default!;
 
@@ -948,7 +948,8 @@ Rules:
             analysisData,
             agentName: "Charlie Munger",
             out tradeSignal,
-            model: model
+            model: model,
+            baseRate: baseRate
         );
     }
 }
