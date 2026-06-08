@@ -49,7 +49,7 @@ public class CathieWoodAgent : IAgent
         var maxScore = Math.Max(1, disruptive.MaxScore + innovation.MaxScore + valuation.MaxScore);
 
         if (TryGenerateOutput(input.Model, ticker, disruptive, innovation, valuation, totalScore, maxScore,
-                out var tradeSignal))
+                input.BaseRate, out var tradeSignal))
             return new AgentResult(Key, DisplayName, ticker, tradeSignal,
                 new[] { disruptive, innovation, valuation });
 
@@ -283,7 +283,7 @@ public class CathieWoodAgent : IAgent
 
     private bool TryGenerateOutput(string model, string ticker, FinancialAnalysisResult disruptive,
         FinancialAnalysisResult innovation, FinancialAnalysisResult valuation, decimal totalScore, int maxScore,
-        out TradeSignal tradeSignal)
+        BaseRate? baseRate, out TradeSignal tradeSignal)
     {
         var systemMessage = @"You are a Cathie Wood AI agent, making investment decisions using her principles:
 1. Seek companies leveraging disruptive innovation.
@@ -317,7 +317,8 @@ Rules:
             analysisData,
             agentName: "Cathie Wood",
             out tradeSignal,
-            model: model
+            model: model,
+            baseRate: baseRate
         );
     }
 }

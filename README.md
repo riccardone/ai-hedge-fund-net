@@ -70,6 +70,49 @@ Example `appsettings.json`:
 }
 ```
 
+### Optional: Historical Base-Rate Grounding (off by default)
+
+The agents can optionally be **grounded** in historical base rates from [Chart Library](https://chartlibrary.io). For the `(ticker, decision date)` an agent is evaluating, it looks up the calibrated forward-return distribution of historically analogous setups and adds one plain-English line of context to the agent's reasoning. It is **purely advisory**: it never changes an agent's buy/hold/sell signal or confidence, and when a signal runs counter to a clearly-signed base rate it appends a one-line reality-check note only.
+
+This feature is **off by default** and fully **degrade-safe** — if it is disabled, unconfigured, or the endpoint is slow/unreachable, the program behaves exactly as it does today (the lookup returns nothing and never throws or blocks the trading flow).
+
+To enable it, add a `Grounding` section to `appsettings.json` and supply a Chart Library API key:
+
+```json
+{
+  "Grounding": {
+    "Enabled": true,
+    "ApiKey": "your-chartlibrary-api-key",
+    "BaseUrl": "https://chartlibrary.io",
+    "Timeframe": "rth",
+    "Horizons": [ 1, 5, 10 ],
+    "OverfitHorizon": 5,
+    "TimeoutSeconds": 8,
+    "ExcludeSameSymbolDays": true
+  }
+}
+```
+
+Grounding only activates when **both** `Enabled` is `true` **and** an API key is present. The key and base URL can also be supplied via environment variables (handy for CI/containers), which override `appsettings.json`:
+
+```bash
+export CHART_LIBRARY_API_KEY=your-chartlibrary-api-key
+export CHART_LIBRARY_API_URL=https://chartlibrary.io   # optional
+```
+
+| Key | Default | Description |
+|---|---|---|
+| `Enabled` | `false` | Master switch; grounding is a no-op unless `true` **and** a key is set |
+| `ApiKey` | _(none)_ | Chart Library API key (or the `CHART_LIBRARY_API_KEY` env var) |
+| `BaseUrl` | `https://chartlibrary.io` | API base URL (or the `CHART_LIBRARY_API_URL` env var) |
+| `Timeframe` | `rth` | Bar timeframe to anchor on |
+| `Horizons` | `[1, 5, 10]` | Forward-return horizons (days) requested |
+| `OverfitHorizon` | `5` | Which horizon's band is surfaced to the agent |
+| `TimeoutSeconds` | `8` | Per-lookup HTTP timeout; on timeout the lookup is skipped |
+| `ExcludeSameSymbolDays` | `true` | Exclude the same symbol's own history from the cohort |
+
+> Anchoring uses **no lookahead**: the base rate for a ticker is anchored on the latest priced bar (the decision date), and the historical cohort is drawn only from earlier data.
+
 ---
 
 ## Cache

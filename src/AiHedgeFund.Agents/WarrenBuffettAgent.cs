@@ -41,7 +41,7 @@ public class WarrenBuffettAgent : IAgent
         var totalScore = fundamentals.Score + consistency.Score + valuation.Score;
         var maxScore = fundamentals.MaxScore + consistency.MaxScore + valuation.MaxScore;
 
-        if (TryGenerateOutput(ticker, fundamentals, consistency, valuation, totalScore, maxScore, input.Model, out var tradeSignal))
+        if (TryGenerateOutput(ticker, fundamentals, consistency, valuation, totalScore, maxScore, input.Model, input.BaseRate, out var tradeSignal))
             return new AgentResult(Key, DisplayName, ticker, tradeSignal, new[] { fundamentals, consistency, valuation });
 
         _logger.LogError($"Error while generating signal for {ticker}");
@@ -369,7 +369,7 @@ public class WarrenBuffettAgent : IAgent
 
     private bool TryGenerateOutput(string ticker, FinancialAnalysisResult fundamentals,
         FinancialAnalysisResult consistency, FinancialAnalysisResult valuationSummary, double totalScore, int maxScore,
-        string model, out TradeSignal tradeSignal)
+        string model, BaseRate? baseRate, out TradeSignal tradeSignal)
     {
         tradeSignal = default!;
 
@@ -408,7 +408,8 @@ public class WarrenBuffettAgent : IAgent
             analysisData: analysisData,
             agentName: "Warren Buffett",
             out tradeSignal,
-            model: model
+            model: model,
+            baseRate: baseRate
         );
     }
 }

@@ -49,7 +49,7 @@ public class StanleyDruckenmillerAgent : IAgent
 
         const int maxScore = 10;
 
-        if (TryGenerateOutput(ticker, growthMomentum, riskReward, valuation, sentiment, insiderActivity, totalScore, maxScore, input.Model, out var tradeSignal))
+        if (TryGenerateOutput(ticker, growthMomentum, riskReward, valuation, sentiment, insiderActivity, totalScore, maxScore, input.Model, input.BaseRate, out var tradeSignal))
             return new AgentResult(Key, DisplayName, ticker, tradeSignal,
                 new[] { growthMomentum, riskReward, sentiment, insiderActivity, valuation });
 
@@ -476,7 +476,7 @@ public class StanleyDruckenmillerAgent : IAgent
 
     private bool TryGenerateOutput(string ticker, FinancialAnalysisResult growthMomentum,
         FinancialAnalysisResult riskReward, FinancialAnalysisResult valuation, FinancialAnalysisResult sentiment,
-        FinancialAnalysisResult insiderActivity, double totalScore, int maxScore, string model, out TradeSignal tradeSignal)
+        FinancialAnalysisResult insiderActivity, double totalScore, int maxScore, string model, BaseRate? baseRate, out TradeSignal tradeSignal)
     {
         tradeSignal = default!;
 
@@ -515,7 +515,8 @@ Rules:
             analysisData: analysisData,
             agentName: "Stanley Druckenmiller",
             out tradeSignal,
-            model: model
+            model: model,
+            baseRate: baseRate
         );
     }
 }

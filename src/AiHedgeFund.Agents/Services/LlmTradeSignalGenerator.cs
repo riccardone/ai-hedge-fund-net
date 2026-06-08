@@ -1,6 +1,7 @@
 ﻿using System.Text.Json;
 using System.Text.RegularExpressions;
 using AiHedgeFund.Contracts;
+using AiHedgeFund.Contracts.Model;
 
 namespace AiHedgeFund.Agents.Services;
 
@@ -14,15 +15,24 @@ public static class LlmTradeSignalGenerator
         object analysisData,
         string agentName,
         out TradeSignal tradeSignal,
-        string model = "gpt-4o-mini")
+        string model = "gpt-4o-mini",
+        BaseRate? baseRate = null)
     {
         tradeSignal = default!;
+
+        // Off-by-default grounding: when a base rate is supplied, give the model the
+        // realized forward-return distribution of analogous historical setups as context
+        // to reason WITH. It is advisory only and never forces a particular signal.
+        var grounding = baseRate is null
+            ? string.Empty
+            : "\n\nHistorical base-rate context (advisory — realized outcomes of analogous "
+              + $"past setups, not a forecast):\n{baseRate.ToContextLine()}\n";
 
         var userMessage = $@"Based on the following analysis, create a {agentName}-style investment signal:
 
 Analysis Data for {ticker}:
 {JsonSerializer.Serialize(analysisData, new JsonSerializerOptions { WriteIndented = true })}
-
+{grounding}
 Return JSON exactly in this format:
 {{
   ""signal"": ""bullish"" or ""bearish"" or ""neutral"",

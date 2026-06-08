@@ -5,6 +5,7 @@ using AiHedgeFund.Agents.Services;
 using AiHedgeFund.Contracts;
 using AiHedgeFund.Data;
 using AiHedgeFund.Data.AlphaVantage;
+using AiHedgeFund.Data.ChartLibrary;
 using AiHedgeFund.Data.Mock;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -61,6 +62,25 @@ internal class Program
                         throw new InvalidOperationException("OpenAI API key is missing in configuration.");
                     client.BaseAddress = new Uri("https://api.openai.com/v1/");
                     client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+                });
+
+                // Optional historical base-rate grounding (off by default). Only does anything
+                // when the "Grounding" section sets Enabled=true AND a key is present (config or
+                // the CHART_LIBRARY_API_KEY environment variable). Otherwise it is a clean no-op.
+                var grounding = configuration.GetSection(GroundingOptions.SectionName).Get<GroundingOptions>()
+                                ?? new GroundingOptions();
+                var groundingKey = Environment.GetEnvironmentVariable("CHART_LIBRARY_API_KEY");
+                if (!string.IsNullOrWhiteSpace(groundingKey))
+                    grounding.ApiKey = groundingKey;
+                var groundingUrl = Environment.GetEnvironmentVariable("CHART_LIBRARY_API_URL");
+                if (!string.IsNullOrWhiteSpace(groundingUrl))
+                    grounding.BaseUrl = groundingUrl;
+                services.AddSingleton(grounding);
+                services.AddSingleton<IBaseRateProvider, ChartLibraryBaseRateProvider>();
+                services.AddHttpClient("ChartLibrary", client =>
+                {
+                    client.BaseAddress = new Uri(grounding.BaseUrl.TrimEnd('/') + "/");
+                    client.Timeout = TimeSpan.FromSeconds(grounding.TimeoutSeconds <= 0 ? 8.0 : grounding.TimeoutSeconds);
                 });
             })
             .ConfigureLogging(logging =>
