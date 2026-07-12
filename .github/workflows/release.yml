@@ -48,10 +48,16 @@ jobs:
 
       - name: Push to NuGet.org
         run: |
-          find ./nupkgs -name "*.nupkg" -exec dotnet nuget push {} \
-            --api-key ${{ secrets.NUGET_API_KEY }} \
-            --source https://api.nuget.org/v3/index.json \
-            --skip-duplicate \;
+          if [ -z "${{ secrets.NUGET_API_KEY }}" ]; then
+            echo "ERROR: NUGET_API_KEY secret is not set."
+            exit 1
+          fi
+          find ./nupkgs -name "*.nupkg" | while read pkg; do
+            dotnet nuget push "$pkg" \
+              --api-key ${{ secrets.NUGET_API_KEY }} \
+              --source https://api.nuget.org/v3/index.json \
+              --skip-duplicate
+          done
 
       - name: Push to GitHub Packages
         env:
